@@ -1,0 +1,27 @@
+[project]
+name = "app"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "MarcoA-Pozol",email = "marcoantoniopozolnarciso@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard] (>=0.128.0,<0.129.0)",
+    "pandas (>=2.3.3,<3.0.0)",
+    "asyncpg (>=0.31.0,<0.32.0)",
+    "sqlalchemy (>=2.0.0)",
+    "python-dotenv (>=1.2.1,<2.0.0)"
+]
+package-mode = false
+
+[tool.poetry.scripts]
+dev = "app.run:main"
+makemigrations = "app.run:makemigrations"
+migrate = "app.run:migrate"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
