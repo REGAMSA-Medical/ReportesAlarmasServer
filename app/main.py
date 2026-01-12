@@ -3,6 +3,8 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from . database import end_db
+# Import routers
+from app.routes.authentication import router as authRouter
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,10 +32,4 @@ app.add_middleware(
 async def root() -> JSONResponse:
     return JSONResponse(content={'message':'Bienvenido a la API de REGAMSA Medical'}, status_code=200)
 
-@app.get('/userInfo')
-async def userInfo() -> JSONResponse:
-    return JSONResponse(content={'item':{
-        'id':1,
-        'username':'Emanuel',
-        'role':'Mecatronics Engineer'
-    }}, status_code=200)
+app.include_router(authRouter)
