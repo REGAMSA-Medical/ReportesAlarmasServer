@@ -9,9 +9,7 @@ class User(BaselineModel):
     first_lastname = Column(String, nullable=False, index=True)
     second_lastname = Column(String, nullable=True, index=False)   
     email = Column(String, default=None, nullable=True, index=False)
-    is_operator = Column(Boolean, default=False, nullable=False, index=True)
-    is_manager = Column(Boolean, default=False, nullable=False, index=True)
-    is_supervisor = Column(Boolean, default=False, nullable=False, index=True)
+    role = Column(String, default='Jefe de Area', nullable=False, index=True)
 
     @validates('age')
     def validate_age(self, key, value):

@@ -9,10 +9,9 @@ class UserReadSerializer(BaseModel):
     second_lastname:str
     email = str
     password = str
-    is_operator = bool 
-    is_manager = bool
-    is_supervisor = bool
-    datetime = datetime
+    role = str = 'Jefe de Area'
+    created_at = datetime
+    updated_at = datetime
 
     class Config:
         from_attributes = True
@@ -24,9 +23,7 @@ class UserCreateSerializer(BaseModel):
     second_lastname:str
     email:str
     password:str
-    is_operator:bool
-    is_manager:bool
-    is_supervisor:bool
+    role:str='Jefe de Area'
     
     class Config:
         from_attributes = True
