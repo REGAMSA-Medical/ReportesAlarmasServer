@@ -29,3 +29,11 @@ app.add_middleware(
 @app.get('/')
 async def root() -> JSONResponse:
     return JSONResponse(content={'message':'Bienvenido a la API de REGAMSA Medical'}, status_code=200)
+
+@app.get('/userInfo')
+async def userInfo() -> JSONResponse:
+    return JSONResponse(content={'item':{
+        'id':1,
+        'username':'Emanuel',
+        'role':'Mecatronics Engineer'
+    }}, status_code=200)
