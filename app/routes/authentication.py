@@ -6,7 +6,7 @@ from app.models.authentication import User
 from app.utils.authentication import create_tokens, hash_password, verify_password, JWT_SECRET_KEY, ALGORITHM
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 router = APIRouter(prefix='/auth', tags=['Authentication'])
 
@@ -27,6 +27,28 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             print("❌ Usuario ya registrado")
             raise HTTPException(status_code=400, detail='El email ya está registrado')
         
+        same_area_query = select(User).filter(
+            func.upper(func.trim(User.firstname)) == func.upper(func.trim(user_data.firstname)),
+            func.upper(func.trim(User.first_lastname)) == func.upper(func.trim(user_data.first_lastname)),
+            func.upper(func.trim(User.role)) == func.upper(func.trim(user_data.role))
+        )
+
+        # Lastnames validation
+        if user_data.second_lastname and user_data.second_lastname.strip():
+            same_area_query = same_area_query.filter(
+                func.upper(func.trim(User.second_lastname)) == func.upper(func.trim(user_data.second_lastname))
+            )
+
+        result = await db.execute(same_area_query)
+        existing_same_area = result.scalars().first()
+
+        if existing_same_area:
+            raise HTTPException(
+                status_code=400,
+                detail=f'Ya existe un {user_data.role} con el nombre {user_data.firstname} {user_data.first_lastname}. '
+                    f'Por favor, verifica que no sea la misma persona o contacta al administrador.'
+            )
+        
         # Hash password  
         hashed_pwd = hash_password(user_data.password)
         print(f"🔐 Hash generado (primeros 30 chars): {hashed_pwd[:30]}...")
@@ -45,14 +67,14 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
         db.add(new_user)
         print("✅ Usuario agregado a la sesión")
         
-        await db.commit()  # Cambia db.commit() por await db.commit() si es async
+        await db.commit()
         print("✅ Commit realizado")
         
         await db.refresh(new_user)
         print(f"✅ Usuario refrescado. ID: {new_user.id}")
         print(f"✅ Email en objeto: {new_user.email}")
         
-        # Verificar que realmente se guardó
+        # Verify user was saved
         verification = await db.execute(select(User).filter(User.id == new_user.id))
         verified_user = verification.scalars().first()
         print(f"✅ Verificación en BD: {'EXISTE' if verified_user else 'NO EXISTE'}")
