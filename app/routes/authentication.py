@@ -21,43 +21,49 @@ async def userInfo() -> JSONResponse:
 
 @router.post('/signUp')
 async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db)):
-    # Verify if user already exists
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail='El email ya está registrado')
-    
-    # Hash password and save it on db for the new created user
-    hashed_pwd = hash_password(user_data.password)
-    new_user = User(email=user_data.email, hashed_password=hashed_pwd)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    # Generate tokens for direct access after sign In
-    access_token, refresh_token = create_tokens({'sub': new_user.email})
-    
-    return {
-        'access_token': access_token,
-        'refresh_token': refresh_token,
-        'token_type': 'bearer',
-        'user':new_user
-    }
+    try:
+        # Verify if user already exists
+        existing_user = db.query(User).filter(User.email == user_data.email).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail='El email ya está registrado')
+        
+        # Hash password and save it on db for the new created user
+        hashed_pwd = hash_password(user_data.password)
+        new_user = User(email=user_data.email, hashed_password=hashed_pwd)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        # Generate tokens for direct access after sign In
+        access_token, refresh_token = create_tokens({'sub': new_user.email})
+        
+        return {
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'token_type': 'bearer',
+            'user':new_user
+        }
+    except Exception as e:
+        return HTTPException(status_code=500, detail=f'Error inesperado: {e}')
     
 @router.post('/signIn')
 async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == credentials.email).first()
-    
-    if not user or not verify_password(credentials.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail='Credenciales incorrectas')
-    
-    access_token, refresh_token = create_tokens({'sub': user.email})
-    
-    return {
-        'access_token': access_token,
-        'refresh_token': refresh_token,
-        'token_type': 'bearer',
-        'user':user
-    }
+    try:
+        user = db.query(User).filter(User.email == credentials.email).first()
+        
+        if not user or not verify_password(credentials.password, user.hashed_password):
+            raise HTTPException(status_code=401, detail='Credenciales incorrectas')
+        
+        access_token, refresh_token = create_tokens({'sub': user.email})
+        
+        return {
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'token_type': 'bearer',
+            'user':user
+        }
+    except Exception as e:
+        return HTTPException(status_code=500, detail=f'Error inesperado: {e}')
 
 @router.post('/refreshJWT')
 async def refreshJWT(refresh_token: str):
