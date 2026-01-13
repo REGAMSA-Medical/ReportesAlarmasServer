@@ -11,9 +11,3 @@ class User(BaselineModel):
     email = Column(String, default=None, nullable=True, index=False)
     password = Column(String, nullable=False)
     role = Column(String, default='Jefe de Area', nullable=False, index=True)
-
-    @validates('age')
-    def validate_age(self, key, value):
-        if value not in range(17, 80):
-            raise ValueError('Inserta una edad valida (16 - 80 años)')
-        return value

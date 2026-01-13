@@ -11,14 +11,6 @@ from sqlalchemy import select
 
 router = APIRouter(prefix='/auth', tags=['Authentication'])
 
-@router.get('/userInfo')
-async def userInfo() -> JSONResponse:
-    return JSONResponse(content={'item':{
-        'id':1,
-        'username':'Emanuel',
-        'role':'Mecatronics Engineer'
-    }}, status_code=200)
-
 @router.post('/signUp')
 async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db)):
     try:
@@ -53,9 +45,13 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
 @router.post('/signIn')
 async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)):
     try:
-        user = db.query(User).filter(User.email == credentials.email).first()
+        result = await db.execute(select(User).filter(User.email == credentials.email))
+        user = result.scalars().first()
         
-        if not user or not verify_password(credentials.password, user.hashed_password):
+        if not user:
+            raise HTTPException(status_code=404, detail='El usuario no existe')
+            
+        if not verify_password(credentials.password, user.password):
             raise HTTPException(status_code=401, detail='Credenciales incorrectas')
         
         access_token, refresh_token = create_tokens({'sub': user.email})
@@ -64,10 +60,17 @@ async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)
             'access_token': access_token,
             'refresh_token': refresh_token,
             'token_type': 'bearer',
-            'user':user
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'firstname': user.firstname,
+                'first_lastname': user.first_lastname,
+                'second_lastname': user.second_lastname,
+                'role': user.role
+            }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Error inesperado: {e}')
+        raise HTTPException(status_code=500, detail=f'Error inesperado: {str(e)}')
 
 @router.post('/refreshJWT')
 async def refreshJWT(refresh_token: str):
