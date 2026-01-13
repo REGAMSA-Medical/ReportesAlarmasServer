@@ -27,9 +27,11 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
         if existing_user:
             raise HTTPException(status_code=400, detail='El email ya está registrado')
         
-        # Hash password and save it on db for the new created user
+        # Hash password  
         hashed_pwd = hash_password(user_data.password)
-        new_user = User(email=user_data.email, hashed_password=hashed_pwd)
+        
+        # Save new user
+        new_user = User(firstname=user_data.firstname, first_lastname=user_data.first_lastname, second_lastname=user_data.second_lastname, email=user_data.email, role=user_data.role, password=hashed_pwd)
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
@@ -44,7 +46,7 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             'user':new_user
         }
     except Exception as e:
-        return HTTPException(status_code=500, detail=f'Error inesperado: {e}')
+        raise HTTPException(status_code=500, detail=f'Error inesperado: {e}')
     
 @router.post('/signIn')
 async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)):
@@ -63,7 +65,7 @@ async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)
             'user':user
         }
     except Exception as e:
-        return HTTPException(status_code=500, detail=f'Error inesperado: {e}')
+        raise HTTPException(status_code=500, detail=f'Error inesperado: {e}')
 
 @router.post('/refreshJWT')
 async def refreshJWT(refresh_token: str):
