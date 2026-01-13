@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends
 from fastapi.exceptions import HTTPException
-from fastapi.responses import JSONResponse
 from app.database import get_db
 from app.serializers.authentication import UserCreateSerializer, UserLoginSerializer
 from app.models.authentication import User
@@ -14,33 +13,75 @@ router = APIRouter(prefix='/auth', tags=['Authentication'])
 @router.post('/signUp')
 async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db)):
     try:
+        print("=" * 50)
+        print("🔧 DEBUG SIGNUP INICIADO")
+        print(f"📧 Email recibido: {user_data.email}")
+        
         # Verify if user already exists
         result = await db.execute(select(User).filter(User.email == user_data.email))
         existing_user = result.scalars().first()
         
+        print(f"🔍 Usuario ya existe?: {existing_user is not None}")
+        
         if existing_user:
+            print("❌ Usuario ya registrado")
             raise HTTPException(status_code=400, detail='El email ya está registrado')
         
         # Hash password  
         hashed_pwd = hash_password(user_data.password)
+        print(f"🔐 Hash generado (primeros 30 chars): {hashed_pwd[:30]}...")
         
         # Save new user
-        new_user = User(firstname=user_data.firstname, first_lastname=user_data.first_lastname, second_lastname=user_data.second_lastname, email=user_data.email, role=user_data.role, password=hashed_pwd)
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
+        new_user = User(
+            firstname=user_data.firstname, 
+            first_lastname=user_data.first_lastname, 
+            second_lastname=user_data.second_lastname, 
+            email=user_data.email, 
+            role=user_data.role, 
+            password=hashed_pwd
+        )
+        print(f"👤 Objeto User creado en memoria")
         
-        # Generate tokens for direct access after sign In
+        db.add(new_user)
+        print("✅ Usuario agregado a la sesión")
+        
+        await db.commit()  # Cambia db.commit() por await db.commit() si es async
+        print("✅ Commit realizado")
+        
+        await db.refresh(new_user)
+        print(f"✅ Usuario refrescado. ID: {new_user.id}")
+        print(f"✅ Email en objeto: {new_user.email}")
+        
+        # Verificar que realmente se guardó
+        verification = await db.execute(select(User).filter(User.id == new_user.id))
+        verified_user = verification.scalars().first()
+        print(f"✅ Verificación en BD: {'EXISTE' if verified_user else 'NO EXISTE'}")
+        
+        # Generate tokens
         access_token, refresh_token = create_tokens({'sub': new_user.email})
+        print("✅ Tokens generados")
+        print("=" * 50)
         
         return {
             'access_token': access_token,
             'refresh_token': refresh_token,
             'token_type': 'bearer',
-            'user':new_user
+            'user': {
+                'id': new_user.id,
+                'email': new_user.email,
+                'firstname': new_user.firstname,
+                'first_lastname': new_user.first_lastname,
+                'second_lastname': new_user.second_lastname,
+                'role': new_user.role
+            }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Error inesperado: {e}')
+        print(f"❌ ERROR EN SIGNUP: {str(e)}")
+        print(f"❌ TIPO DE ERROR: {type(e)}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 50)
+        raise HTTPException(status_code=500, detail=f'Error inesperado: {str(e)}')
     
 @router.post('/signIn')
 async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)):
