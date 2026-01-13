@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import datetime
 
 # READ
@@ -7,11 +7,11 @@ class UserReadSerializer(BaseModel):
     firstname:str
     first_lastname:str
     second_lastname:str
-    email = str
-    password = str
-    role = str = 'Jefe de Area'
-    created_at = datetime
-    updated_at = datetime
+    email:EmailStr
+    password:str
+    role:str = 'Jefe de Area'
+    created_at:datetime
+    updated_at:datetime
 
     class Config:
         from_attributes = True
@@ -21,7 +21,7 @@ class UserCreateSerializer(BaseModel):
     firstname:str
     first_lastname:str
     second_lastname:str
-    email:str
+    email:EmailStr
     password:str
     role:str='Jefe de Area'
     
@@ -29,5 +29,5 @@ class UserCreateSerializer(BaseModel):
         from_attributes = True
         
 class UserLoginSerializer(BaseModel):
-    email:str
+    email:EmailStr
     password:str
