@@ -5,9 +5,9 @@ from app.database import get_db
 from app.serializers.authentication import UserCreateSerializer, UserLoginSerializer
 from app.models.authentication import User
 from app.utils.authentication import create_tokens, hash_password, verify_password, JWT_SECRET_KEY, ALGORITHM
-from jose import JWTError
-import jwt
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 router = APIRouter(prefix='/auth', tags=['Authentication'])
 
@@ -23,7 +23,9 @@ async def userInfo() -> JSONResponse:
 async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db)):
     try:
         # Verify if user already exists
-        existing_user = db.query(User).filter(User.email == user_data.email).first()
+        result = await db.execute(select(User).filter(User.email == user_data.email))
+        existing_user = result.scalars().first()
+        
         if existing_user:
             raise HTTPException(status_code=400, detail='El email ya está registrado')
         
