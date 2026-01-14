@@ -8,8 +8,8 @@ class UserReadSerializer(BaseModel):
     first_lastname:str
     second_lastname:str
     email:EmailStr
-    password:str
-    role:str = 'Jefe de Area'
+    role:str
+    area:str
     created_at:datetime
     updated_at:datetime
 
@@ -24,6 +24,7 @@ class UserCreateSerializer(BaseModel):
     email:EmailStr
     password:str
     role:str='Jefe de Area'
+    area:str='Mecatrónica'
     
     class Config:
         from_attributes = True

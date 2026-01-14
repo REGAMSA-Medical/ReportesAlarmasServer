@@ -14,18 +14,34 @@ router = APIRouter(prefix='/auth', tags=['Authentication'])
 async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db)):
     try:
         print("=" * 50)
-        print("🔧 DEBUG SIGNUP INICIADO")
-        print(f"📧 Email recibido: {user_data.email}")
+        print("[LOG] DEBUG SIGNUP INICIADO")
+        print(f"[LOG] Email recibido: {user_data.email}")
         
         # Verify if user already exists
         result = await db.execute(select(User).filter(User.email == user_data.email))
         existing_user = result.scalars().first()
         
-        print(f"🔍 Usuario ya existe?: {existing_user is not None}")
+        print(f"[LOG] Usuario ya existe?: {existing_user is not None}")
         
         if existing_user:
-            print("❌ Usuario ya registrado")
+            print("[LOG] Usuario ya registrado")
             raise HTTPException(status_code=400, detail='El email ya está registrado')
+        
+        if user_data.role == "Jefe de Área":
+            # Verify if there is an area boss asigned to that area
+            area_boss_query = select(User).filter(
+                User.role == "Jefe de Área",
+                User.area == user_data.area
+            )
+            result = await db.execute(area_boss_query)
+            existing_boss = result.scalars().first()
+
+            if existing_boss:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Ya existe un Jefe de Área asignado a '{user_data.area}'. "
+                           f"Solo se permite un responsable por departamento."
+                )
         
         same_area_query = select(User).filter(
             func.upper(func.trim(User.firstname)) == func.upper(func.trim(user_data.firstname)),
@@ -51,7 +67,7 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
         
         # Hash password  
         hashed_pwd = hash_password(user_data.password)
-        print(f"🔐 Hash generado (primeros 30 chars): {hashed_pwd[:30]}...")
+        print(f"[LOG] Hash generado (primeros 30 chars): {hashed_pwd[:30]}...")
         
         # Save new user
         new_user = User(
@@ -60,28 +76,29 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             second_lastname=user_data.second_lastname, 
             email=user_data.email, 
             role=user_data.role, 
+            area=user_data.area,
             password=hashed_pwd
         )
-        print(f"👤 Objeto User creado en memoria")
+        print(f"[LOG] Objeto User creado en memoria")
         
         db.add(new_user)
-        print("✅ Usuario agregado a la sesión")
+        print("[LOG] Usuario agregado a la sesión")
         
         await db.commit()
-        print("✅ Commit realizado")
+        print("[LOG] Commit realizado")
         
         await db.refresh(new_user)
-        print(f"✅ Usuario refrescado. ID: {new_user.id}")
-        print(f"✅ Email en objeto: {new_user.email}")
+        print(f"[LOG] Usuario refrescado. ID: {new_user.id}")
+        print(f"[LOG] Email en objeto: {new_user.email}")
         
         # Verify user was saved
         verification = await db.execute(select(User).filter(User.id == new_user.id))
         verified_user = verification.scalars().first()
-        print(f"✅ Verificación en BD: {'EXISTE' if verified_user else 'NO EXISTE'}")
+        print(f"[LOG] Verificación en BD: {'EXISTE' if verified_user else 'NO EXISTE'}")
         
         # Generate tokens
         access_token, refresh_token = create_tokens({'sub': new_user.email})
-        print("✅ Tokens generados")
+        print("[LOG] Tokens generados")
         print("=" * 50)
         
         return {
@@ -94,12 +111,13 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
                 'firstname': new_user.firstname,
                 'first_lastname': new_user.first_lastname,
                 'second_lastname': new_user.second_lastname,
-                'role': new_user.role
+                'role': new_user.role,
+                'area': new_user.area
             }
         }
     except Exception as e:
-        print(f"❌ ERROR EN SIGNUP: {str(e)}")
-        print(f"❌ TIPO DE ERROR: {type(e)}")
+        print(f"[ERROR] ERROR EN SIGNUP: {str(e)}")
+        print(f"[ERROR] TIPO DE ERROR: {type(e)}")
         import traceback
         traceback.print_exc()
         print("=" * 50)
@@ -129,7 +147,8 @@ async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)
                 'firstname': user.firstname,
                 'first_lastname': user.first_lastname,
                 'second_lastname': user.second_lastname,
-                'role': user.role
+                'role': user.role,
+                'area': user.area
             }
         }
     except Exception as e:
