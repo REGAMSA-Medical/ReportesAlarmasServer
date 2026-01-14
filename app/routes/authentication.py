@@ -27,6 +27,22 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             print("[LOG] Usuario ya registrado")
             raise HTTPException(status_code=400, detail='El email ya está registrado')
         
+        if user_data.role == "Jefe de Área":
+            # Verify if there is an area boss asigned to that area
+            area_boss_query = select(User).filter(
+                User.role == "Jefe de Área",
+                User.area == user_data.area
+            )
+            result = await db.execute(area_boss_query)
+            existing_boss = result.scalars().first()
+
+            if existing_boss:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Ya existe un Jefe de Área asignado a '{user_data.area}'. "
+                           f"Solo se permite un responsable por departamento."
+                )
+        
         same_area_query = select(User).filter(
             func.upper(func.trim(User.firstname)) == func.upper(func.trim(user_data.firstname)),
             func.upper(func.trim(User.first_lastname)) == func.upper(func.trim(user_data.first_lastname)),
@@ -60,6 +76,7 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             second_lastname=user_data.second_lastname, 
             email=user_data.email, 
             role=user_data.role, 
+            area=user_data.area,
             password=hashed_pwd
         )
         print(f"[LOG] Objeto User creado en memoria")
@@ -94,7 +111,8 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
                 'firstname': new_user.firstname,
                 'first_lastname': new_user.first_lastname,
                 'second_lastname': new_user.second_lastname,
-                'role': new_user.role
+                'role': new_user.role,
+                'area': new_user.area
             }
         }
     except Exception as e:
@@ -129,7 +147,8 @@ async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)
                 'firstname': user.firstname,
                 'first_lastname': user.first_lastname,
                 'second_lastname': user.second_lastname,
-                'role': user.role
+                'role': user.role,
+                'area': user.area
             }
         }
     except Exception as e:
