@@ -10,4 +10,5 @@ class User(BaselineModel):
     second_lastname = Column(String, nullable=True, index=False)   
     email = Column(String, default=None, nullable=True, index=False)
     password = Column(String, nullable=False)
-    role = Column(String, default='Jefe de Area', nullable=False, index=True)
+    role = Column(String, default='Jefe de Área', nullable=False, index=True)
+    area = Column(String, default='Mecatrónica', nullable=False, index=True)

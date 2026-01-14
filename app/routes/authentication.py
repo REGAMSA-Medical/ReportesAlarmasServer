@@ -14,17 +14,17 @@ router = APIRouter(prefix='/auth', tags=['Authentication'])
 async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db)):
     try:
         print("=" * 50)
-        print("🔧 DEBUG SIGNUP INICIADO")
-        print(f"📧 Email recibido: {user_data.email}")
+        print("[LOG] DEBUG SIGNUP INICIADO")
+        print(f"[LOG] Email recibido: {user_data.email}")
         
         # Verify if user already exists
         result = await db.execute(select(User).filter(User.email == user_data.email))
         existing_user = result.scalars().first()
         
-        print(f"🔍 Usuario ya existe?: {existing_user is not None}")
+        print(f"[LOG] Usuario ya existe?: {existing_user is not None}")
         
         if existing_user:
-            print("❌ Usuario ya registrado")
+            print("[LOG] Usuario ya registrado")
             raise HTTPException(status_code=400, detail='El email ya está registrado')
         
         same_area_query = select(User).filter(
@@ -51,7 +51,7 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
         
         # Hash password  
         hashed_pwd = hash_password(user_data.password)
-        print(f"🔐 Hash generado (primeros 30 chars): {hashed_pwd[:30]}...")
+        print(f"[LOG] Hash generado (primeros 30 chars): {hashed_pwd[:30]}...")
         
         # Save new user
         new_user = User(
@@ -62,26 +62,26 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             role=user_data.role, 
             password=hashed_pwd
         )
-        print(f"👤 Objeto User creado en memoria")
+        print(f"[LOG] Objeto User creado en memoria")
         
         db.add(new_user)
-        print("✅ Usuario agregado a la sesión")
+        print("[LOG] Usuario agregado a la sesión")
         
         await db.commit()
-        print("✅ Commit realizado")
+        print("[LOG] Commit realizado")
         
         await db.refresh(new_user)
-        print(f"✅ Usuario refrescado. ID: {new_user.id}")
-        print(f"✅ Email en objeto: {new_user.email}")
+        print(f"[LOG] Usuario refrescado. ID: {new_user.id}")
+        print(f"[LOG] Email en objeto: {new_user.email}")
         
         # Verify user was saved
         verification = await db.execute(select(User).filter(User.id == new_user.id))
         verified_user = verification.scalars().first()
-        print(f"✅ Verificación en BD: {'EXISTE' if verified_user else 'NO EXISTE'}")
+        print(f"[LOG] Verificación en BD: {'EXISTE' if verified_user else 'NO EXISTE'}")
         
         # Generate tokens
         access_token, refresh_token = create_tokens({'sub': new_user.email})
-        print("✅ Tokens generados")
+        print("[LOG] Tokens generados")
         print("=" * 50)
         
         return {
@@ -98,8 +98,8 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             }
         }
     except Exception as e:
-        print(f"❌ ERROR EN SIGNUP: {str(e)}")
-        print(f"❌ TIPO DE ERROR: {type(e)}")
+        print(f"[ERROR] ERROR EN SIGNUP: {str(e)}")
+        print(f"[ERROR] TIPO DE ERROR: {type(e)}")
         import traceback
         traceback.print_exc()
         print("=" * 50)
