@@ -121,7 +121,7 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
         import traceback
         traceback.print_exc()
         print("=" * 50)
-        raise HTTPException(status_code=500, detail=f'Error inesperado: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'Error del servidor: {str(e)}')
     
 @router.post('/signIn')
 async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)):
