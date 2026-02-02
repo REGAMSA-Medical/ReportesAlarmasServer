@@ -76,7 +76,7 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             second_lastname=user_data.second_lastname, 
             email=user_data.email, 
             role=user_data.role, 
-            area=user_data.area,
+            area_id=user_data.area_id,
             password=hashed_pwd
         )
         print(f"[LOG] Objeto User creado en memoria")
@@ -112,7 +112,8 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
                 'first_lastname': new_user.first_lastname,
                 'second_lastname': new_user.second_lastname,
                 'role': new_user.role,
-                'area': new_user.area
+                'area_id': new_user.area_id,
+                'area_name': new_user.area_name
             }
         }
     except Exception as e:
@@ -148,7 +149,8 @@ async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)
                 'first_lastname': user.first_lastname,
                 'second_lastname': user.second_lastname,
                 'role': user.role,
-                'area': user.area
+                'area_id': user.area_id,
+                'area_name': user.area_name
             }
         }
     except Exception as e:
