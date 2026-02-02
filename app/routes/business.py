@@ -5,21 +5,25 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.models.business import Area
 from app.serializers.business import AreaReadSerializer
+from sqlalchemy.orm import joinedload 
+from sqlalchemy.future import select
 
 router = APIRouter(prefix='/business', tags=['Business'])
 
-@router.get('/areas')
+@router.get('/areas/list')
 async def get_areas(db: Session = Depends(get_db)):
     try:
-        result = await db.execute(select(Area))
-        areas = result.scalars().all()
+        query = select(Area).options(joinedload(Area.manager))
+        result = await db.execute(query)
+        areas_db = result.scalars().all()
     
-        if not areas:
-            raise HTTPException(status_code=404, detail='No se encontraron areas registradas')
+        if not areas_db:
+            raise HTTPException(status_code=404, detail='No se encontraron áreas registradas')
 
-        areas = [AreaReadSerializer.from_orm(area) for area in areas]
+        areas_serialized = [AreaReadSerializer.from_orm(area) for area in areas_db]
         
-        return {'items': areas}
+        return {'items': areas_serialized}
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f'Error del servidor: {str(e)}')
+        print(f"DEBUG ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail='Error interno al obtener áreas')
