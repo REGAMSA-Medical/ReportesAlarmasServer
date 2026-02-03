@@ -31,7 +31,7 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             # Verify if there is an area boss asigned to that area
             area_boss_query = select(User).filter(
                 User.role == "Jefe de Área",
-                User.area == user_data.area
+                User.area_id == user_data.area_id
             )
             result = await db.execute(area_boss_query)
             existing_boss = result.scalars().first()
@@ -39,7 +39,7 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             if existing_boss:
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"Ya existe un Jefe de Área asignado a '{user_data.area}'. "
+                    detail=f"Ya existe un Jefe de Área asignado a '{user_data.area_name}'. "
                            f"Solo se permite un responsable por departamento."
                 )
         
