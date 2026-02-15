@@ -7,25 +7,22 @@ from app.utils.authentication import create_tokens, hash_password, verify_passwo
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
+from app.utils.logger import logger
 
 router = APIRouter(prefix='/auth', tags=['Authentication'])
 
 @router.post('/signUp')
 async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db)):
     try:
-        print("=" * 50)
-        print("[LOG] DEBUG SIGNUP INICIADO")
-        print(f"[LOG] Email recibido: {user_data.email}")
+        logger.info(f"Email recibido: {user_data.email}")
         
-        # Verify if user already exists
+        # Verify if user email is already taken 
         result = await db.execute(select(User).filter(User.email == user_data.email))
         existing_user = result.scalars().first()
         
-        print(f"[LOG] Usuario ya existe?: {existing_user is not None}")
-        
         if existing_user:
-            print("[LOG] Usuario ya registrado")
-            raise HTTPException(status_code=400, detail='El email ya está registrado')
+            logger.error("El email ya fue usado")
+            raise HTTPException(status_code=400, detail='El email ya fue usado')
         
         if user_data.role == "Jefe de Área":
             # Verify if there is an area boss asigned to that area

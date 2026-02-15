@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from . database import end_db
+from . utils.logger import logger
 # Import routers
 from app.routes.authentication import router as authRouter
 from app.routes.business import router as businessRouter
@@ -11,13 +12,13 @@ from app.routes.business import router as businessRouter
 async def lifespan(app: FastAPI):
     # Startup
     try:
-        print('Init API')
+        logger.info('Init API')
     except Exception as e:
         print(f'API Init Error: {e}')
     yield
     # Shutdown
     await end_db()
-    print('API close')
+    logger.info('Closed API')
 
 app = FastAPI(lifespan=lifespan)
 

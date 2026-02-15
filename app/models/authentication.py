@@ -1,6 +1,5 @@
 from app.models.base import BaselineModel
 from sqlalchemy import Column, String, ForeignKey, Integer
-from sqlalchemy.orm import relationship
 
 class User(BaselineModel):
     __tablename__ = 'users'
