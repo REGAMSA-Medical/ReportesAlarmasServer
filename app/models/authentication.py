@@ -12,11 +12,3 @@ class User(BaselineModel):
     password = Column(String, nullable=False)
     role = Column(String, default='Jefe de Área', nullable=False, index=True)
     area_id = Column(Integer, ForeignKey('areas.id'), nullable=True)
-    # Relations (only for lecture)
-    assigned_area = relationship("Area", foreign_keys=[area_id], back_populates="employees")
-
-    @property
-    def area_name(self):
-        if self.assigned_area:
-            return self.assigned_area.name
-        return "Sin Área"
