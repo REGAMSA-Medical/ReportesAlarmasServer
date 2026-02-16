@@ -3,70 +3,70 @@ from fastapi.exceptions import HTTPException
 from app.database import get_db
 from app.serializers.authentication import UserCreateSerializer, UserLoginSerializer
 from app.models.authentication import User
+from app.models.business import Area
 from app.utils.authentication import create_tokens, hash_password, verify_password, JWT_SECRET_KEY, ALGORITHM
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.logger import logger
 
 router = APIRouter(prefix='/auth', tags=['Authentication'])
 
 @router.post('/signUp')
-async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db)):
+async def signUp(user_data: UserCreateSerializer, db: AsyncSession = Depends(get_db)):
     try:
-        logger.info(f"Email recibido: {user_data.email}")
+        logger.info(f"Iniciando registro para email: {user_data.email}")
         
-        # Verify if user email is already taken 
+        # Verify existing email
         result = await db.execute(select(User).filter(User.email == user_data.email))
-        existing_user = result.scalars().first()
-        
-        if existing_user:
-            logger.error("El email ya fue usado")
-            raise HTTPException(status_code=400, detail='El email ya fue usado')
-        
-        # Verify if there is already an area manager for the selected area
-        if user_data.role == "Jefe de Área":
-            area_boss_query = select(User).filter(
-                User.role == "Jefe de Área",
-                User.area_id == user_data.area_id
-            )
-            result = await db.execute(area_boss_query)
-            existing_boss = result.scalars().first()
+        if result.scalars().first():
+            logger.warning(f"Intento de registro con email duplicado: {user_data.email}")
+            raise HTTPException(status_code=400, detail='El email ya está registrado')
 
-            if existing_boss:
-                logger.error('Ya existe un Jefe de Área asignado al area seleccionada')
+        # Verify area exists
+        area_res = await db.execute(select(Area).filter(Area.id == user_data.area_id))
+        area = area_res.scalar_one_or_none()
+        
+        if not area:
+            logger.error(f"Área con ID {user_data.area_id} no encontrada")
+            raise HTTPException(status_code=404, detail="El área seleccionada no existe")
+
+        # Verify already managed area
+        if user_data.role == "Jefe de Área":
+            if area.managed:
+                logger.warning(f"Intento de asignar segundo Jefe al área: {area.name}")
                 raise HTTPException(
                     status_code=400, 
-                    detail=f'Ya existe un Jefe de Área asignado al area seleccionada'
+                    detail=f"El área '{area.name}' ya tiene un Jefe asignado."
                 )
-        
-        # Verify only one person with the same name exists by area (lastnames)? or correct so, what does this code do, I mean, the comment
+            area.managed = True
+            logger.info(f"Área '{area.name}' marcada como gestionada.")
+
+        # Avoid same person in the same rol and department/area
         same_area_query = select(User).filter(
             func.upper(func.trim(User.firstname)) == func.upper(func.trim(user_data.firstname)),
             func.upper(func.trim(User.first_lastname)) == func.upper(func.trim(user_data.first_lastname)),
-            func.upper(func.trim(User.role)) == func.upper(func.trim(user_data.role))
+            func.upper(func.trim(User.role)) == func.upper(func.trim(user_data.role)),
+            User.area_id == user_data.area_id
         )
+        
         if user_data.second_lastname and user_data.second_lastname.strip():
             same_area_query = same_area_query.filter(
                 func.upper(func.trim(User.second_lastname)) == func.upper(func.trim(user_data.second_lastname))
             )
 
-        result = await db.execute(same_area_query)
-        existing_same_area = result.scalars().first()
-
-        if existing_same_area:
-            logger.error('Agrega el log del error aqui')
+        res_duplicate = await db.execute(same_area_query)
+        if res_duplicate.scalars().first():
+            logger.warning(f"Ya existe un {user_data.role} con ese nombre en esta área.")
             raise HTTPException(
                 status_code=400,
-                detail=f'Ya existe un {user_data.role} con el nombre {user_data.firstname} {user_data.first_lastname}. '
-                    f'Por favor, verifica que no sea la misma persona o contacta al administrador.'
+                detail=f"Ya existe un {user_data.role} con ese nombre en esta área."
             )
         
-        # Hash password  
+        # Create user
         hashed_pwd = hash_password(user_data.password)
-        logger.info('Password hash generado')
-        
-        # Save new user
+    
         new_user = User(
             firstname=user_data.firstname, 
             first_lastname=user_data.first_lastname, 
@@ -76,33 +76,45 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             role=user_data.role, 
             area_id=user_data.area_id
         )
+        
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
-        logger.info('Usuario Creado Con Éxito')
+        logger.info(f"Usuario {new_user.id} creado exitosamente y guardado en DB")
         
-        # Generate tokens
-        access_token, refresh_token = create_tokens({'sub': new_user.email})
-        logger.info('Tokens JWT Generados')
+        # Obtain user, and area_name with a join
+        final_query = (
+            select(User, Area.name)
+            .join(Area, User.area_id == Area.id)
+            .filter(User.id == new_user.id)
+        )
+        final_res = await db.execute(final_query)
+        user_row, area_name = final_res.first()
+
+        access_token, refresh_token = create_tokens({'sub': user_row.email})
+        logger.info(f"Tokens JWT generados para {user_row.email}. Proceso finalizado.")
         
         return {
             'access_token': access_token,
             'refresh_token': refresh_token,
             'token_type': 'bearer',
             'user': {
-                'id': new_user.id,
-                'email': new_user.email,
-                'firstname': new_user.firstname,
-                'first_lastname': new_user.first_lastname,
-                'second_lastname': new_user.second_lastname,
-                'role': new_user.role,
-                'area_id': new_user.area_id,
-                'area_name': new_user.area_name
+                'id': user_row.id,
+                'email': user_row.email,
+                'firstname': user_row.firstname,
+                'first_lastname': user_row.first_lastname,
+                'second_lastname': user_row.second_lastname,
+                'role': user_row.role,
+                'area_id': user_row.area_id,
+                'area_name': area_name
             }
         }
+
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        logger.error(f'Signup Error: {str(e)}')
-        raise HTTPException(status_code=500, detail=f'Signup Error: {str(e)}')
+        logger.error(f'SignUp Error: {str(e)}', exc_info=True)
+        raise HTTPException(status_code=500, detail=f'SignUp Error: {str(e)}')
     
 @router.post('/signIn')
 async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)):

@@ -11,3 +11,4 @@ class User(BaselineModel):
     password = Column(String, nullable=False)
     role = Column(String, default='Jefe de Área', nullable=False, index=True)
     area_id = Column(Integer, ForeignKey('areas.id'), nullable=True)
+    
