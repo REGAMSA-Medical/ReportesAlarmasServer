@@ -6,7 +6,6 @@ from app.models.authentication import User
 from app.models.business import Area
 from app.utils.authentication import create_tokens, hash_password, verify_password, JWT_SECRET_KEY, ALGORITHM
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.logger import logger
@@ -117,7 +116,7 @@ async def signUp(user_data: UserCreateSerializer, db: AsyncSession = Depends(get
         raise HTTPException(status_code=500, detail=f'SignUp Error: {str(e)}')
     
 @router.post('/signIn')
-async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)):
+async def signIn(credentials: UserLoginSerializer, db: AsyncSession = Depends(get_db)):
     try:
         result = await db.execute(select(User).filter(User.email == credentials.email))
         user = result.scalars().first()

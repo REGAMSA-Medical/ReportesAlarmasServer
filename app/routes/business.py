@@ -1,17 +1,17 @@
 from fastapi import APIRouter, Depends, Response
 from fastapi.exceptions import HTTPException
 from app.database import get_db
-from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.models.business import Area
 from app.serializers.business import AreaReadSerializer
 from sqlalchemy.orm import joinedload 
 from sqlalchemy.future import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix='/business', tags=['Business'])
 
 @router.get('/areas/list')
-async def get_areas(db: Session = Depends(get_db)):
+async def get_areas(db: AsyncSession = Depends(get_db)):
     try:
         query = select(Area).options(joinedload(Area.manager))
         result = await db.execute(query)
