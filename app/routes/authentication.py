@@ -24,8 +24,8 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             logger.error("El email ya fue usado")
             raise HTTPException(status_code=400, detail='El email ya fue usado')
         
+        # Verify if there is already an area manager for the selected area
         if user_data.role == "Jefe de Área":
-            # Verify if there is an area boss asigned to that area
             area_boss_query = select(User).filter(
                 User.role == "Jefe de Área",
                 User.area_id == user_data.area_id
@@ -34,19 +34,18 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             existing_boss = result.scalars().first()
 
             if existing_boss:
+                logger.error('Ya existe un Jefe de Área asignado al area seleccionada')
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"Ya existe un Jefe de Área asignado a '{user_data.area_name}'. "
-                           f"Solo se permite un responsable por departamento."
+                    detail=f'Ya existe un Jefe de Área asignado al area seleccionada'
                 )
         
+        # Verify only one person with the same name exists by area (lastnames)? or correct so, what does this code do, I mean, the comment
         same_area_query = select(User).filter(
             func.upper(func.trim(User.firstname)) == func.upper(func.trim(user_data.firstname)),
             func.upper(func.trim(User.first_lastname)) == func.upper(func.trim(user_data.first_lastname)),
             func.upper(func.trim(User.role)) == func.upper(func.trim(user_data.role))
         )
-
-        # Lastnames validation
         if user_data.second_lastname and user_data.second_lastname.strip():
             same_area_query = same_area_query.filter(
                 func.upper(func.trim(User.second_lastname)) == func.upper(func.trim(user_data.second_lastname))
@@ -56,6 +55,7 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
         existing_same_area = result.scalars().first()
 
         if existing_same_area:
+            logger.error('Agrega el log del error aqui')
             raise HTTPException(
                 status_code=400,
                 detail=f'Ya existe un {user_data.role} con el nombre {user_data.firstname} {user_data.first_lastname}. '
@@ -64,7 +64,7 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
         
         # Hash password  
         hashed_pwd = hash_password(user_data.password)
-        print(f"[LOG] Hash generado (primeros 30 chars): {hashed_pwd[:30]}...")
+        logger.info('Password hash generado')
         
         # Save new user
         new_user = User(
@@ -72,31 +72,18 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             first_lastname=user_data.first_lastname, 
             second_lastname=user_data.second_lastname, 
             email=user_data.email, 
+            password=hashed_pwd,
             role=user_data.role, 
-            area_id=user_data.area_id,
-            password=hashed_pwd
+            area_id=user_data.area_id
         )
-        print(f"[LOG] Objeto User creado en memoria")
-        
         db.add(new_user)
-        print("[LOG] Usuario agregado a la sesión")
-        
         await db.commit()
-        print("[LOG] Commit realizado")
-        
         await db.refresh(new_user)
-        print(f"[LOG] Usuario refrescado. ID: {new_user.id}")
-        print(f"[LOG] Email en objeto: {new_user.email}")
-        
-        # Verify user was saved
-        verification = await db.execute(select(User).filter(User.id == new_user.id))
-        verified_user = verification.scalars().first()
-        print(f"[LOG] Verificación en BD: {'EXISTE' if verified_user else 'NO EXISTE'}")
+        logger.info('Usuario Creado Con Éxito')
         
         # Generate tokens
         access_token, refresh_token = create_tokens({'sub': new_user.email})
-        print("[LOG] Tokens generados")
-        print("=" * 50)
+        logger.info('Tokens JWT Generados')
         
         return {
             'access_token': access_token,
@@ -114,12 +101,8 @@ async def signUp(user_data: UserCreateSerializer, db: Session = Depends(get_db))
             }
         }
     except Exception as e:
-        print(f"[ERROR] ERROR EN SIGNUP: {str(e)}")
-        print(f"[ERROR] TIPO DE ERROR: {type(e)}")
-        import traceback
-        traceback.print_exc()
-        print("=" * 50)
-        raise HTTPException(status_code=500, detail=f'Error del servidor: {str(e)}')
+        logger.error(f'Signup Error: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'Signup Error: {str(e)}')
     
 @router.post('/signIn')
 async def signIn(credentials: UserLoginSerializer, db: Session = Depends(get_db)):

@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
     try:
         logger.info('Init API')
     except Exception as e:
-        print(f'API Init Error: {e}')
+        logger.error(f'API Init Error: {e}')
     yield
     # Shutdown
     await end_db()
