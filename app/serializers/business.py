@@ -25,8 +25,7 @@ class AreaManagerSerializer(BaseModel):
 class AreaReadSerializer(BaseModel):
     id: int
     name: str
-    manager_id: Optional[int]
-    manager: Optional[AreaManagerSerializer] = None
+    managed: bool
     created_at: datetime
     
     class Config:
