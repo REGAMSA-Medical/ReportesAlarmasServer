@@ -118,8 +118,13 @@ async def signUp(user_data: UserCreateSerializer, db: AsyncSession = Depends(get
 @router.post('/signIn')
 async def signIn(credentials: UserLoginSerializer, db: AsyncSession = Depends(get_db)):
     try:
-        result = await db.execute(select(User).filter(User.email == credentials.email))
-        user = result.scalars().first()
+        user_area = (
+            select(User, Area.name)
+            .join(Area, User.area_id == Area.id)
+            .filter(User.email == credentials.email)
+        )
+        area_res  = await db.execute(user_area)
+        user, area_name = area_res.first()
         
         if not user:
             raise HTTPException(status_code=404, detail='El usuario no existe')
@@ -141,7 +146,7 @@ async def signIn(credentials: UserLoginSerializer, db: AsyncSession = Depends(ge
                 'second_lastname': user.second_lastname,
                 'role': user.role,
                 'area_id': user.area_id,
-                'area_name': user.area_name
+                'area_name': area_name
             }
         }
     except Exception as e:

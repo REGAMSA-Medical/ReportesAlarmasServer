@@ -1,10 +1,9 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends
 from fastapi.exceptions import HTTPException
 from app.database import get_db
 from sqlalchemy import select
 from app.models.business import Area
 from app.serializers.business import AreaReadSerializer
-from sqlalchemy.orm import joinedload 
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.logger import logger
