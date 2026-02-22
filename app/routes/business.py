@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.exceptions import HTTPException
 from app.database import get_db
 from sqlalchemy import select
-from app.models.business import Area
+from app.models.business import Area, Order
 from app.serializers.business import AreaReadSerializer
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,4 +26,51 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
         
     except Exception as e:
         logger.error(f"Areas List Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f'Areas List Error: {e}')
+        raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
+    
+@router.get('/ordersOverallInfoByUserArea')
+async def get_orders_overall_info_by_user_area(id, db: AsyncSession = Depends(get_db)):
+    try:
+        # Under review 
+        query = select(Order).where(Order.stage=='Under Review', Order.area_id==id)
+        result = await db.execute(query)
+        under_review = result.scalars().all()
+        
+        # To do
+        query = select(Order).where(Order.stage=='To Do', Order.area_id==id)
+        result = await db.execute(query)
+        to_do = result.scalars().all()
+        
+        # Production
+        query = select(Order).where(Order.stage=='Production', Order.area_id==id)
+        result = await db.execute(query)
+        production = result.scalars().all()
+        
+        # Quality assurance
+        query = select(Order).where(Order.stage=='Testing', Order.area_id==id)
+        result = await db.execute(query)
+        testing = result.scalars().all()
+        
+        # Shipping
+        query = select(Order).where(Order.stage=='Shipping', Order.area_id==id)
+        result = await db.execute(query)
+        shipping = result.scalars().all()
+        
+        # Delivery
+        query = select(Order).where(Order.stage=='Delivery', Order.area_id==id)
+        result = await db.execute(query)
+        delivery = result.scalars().all()
+        
+        return {
+                'item': {
+                    'to_do':to_do,
+                    'production':production,
+                    'testing':testing,
+                    'shipping':shipping,
+                    'delivery':delivery,
+                    'under_review':under_review
+                }
+            }
+    except Exception as e:
+        logger.error(f'Unexpected Error: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
