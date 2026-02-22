@@ -1,11 +1,6 @@
 from app.models.base import BaselineModel
 from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Enum
-
-class OrderStatus(Enum):
-    NOT_STARTED = "Not Started"
-    IN_PROGRESS = "In Progress"
-    COMPLETED = "Completed"
-    CANCELED = "Canceled"
+from app.enums.business import OrderStatusEnum
 
 class Area(BaselineModel):
     __tablename__ = 'areas'
@@ -24,6 +19,12 @@ class Order(BaselineModel):
     customer_id = Column(Integer, ForeignKey('customers.id'), nullable=False)
     product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
     stage = Column(Integer, ForeignKey('stages.id'), nullable=False, default=1, index=True)
-    status = Column(Enum(OrderStatus), nullable=False, default=OrderStatus.NOT_STARTED, index=True)
+    status = Column(Enum(OrderStatusEnum), nullable=False, default=OrderStatusEnum.NOT_STARTED, index=True)
+
+class OrderStageEvidence(BaselineModel):
+    __tablename__ = 'order_stage_evidence'
     
-# I have to create table/model "OrderStageEvidence": order_id, stage, evidence(photo/image)
+    order_id = Column(Integer, ForeignKey('orders.id'), nullable=False, index=True)
+    stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False, index=True)
+    evidence_url = Column(String, nullable=False)
+    description = Column(String, nullable=True)
