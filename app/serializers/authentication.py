@@ -9,10 +9,11 @@ class UserReadSerializer(BaseModel):
     second_lastname:str
     email:EmailStr
     role:str
-    area:str
+    area_id:int
+    area_name:str
     created_at:datetime
     updated_at:datetime
-
+    
     class Config:
         from_attributes = True
 
@@ -23,8 +24,9 @@ class UserCreateSerializer(BaseModel):
     second_lastname:str
     email:EmailStr
     password:str
-    role:str='Jefe de Area'
-    area:str='Mecatrónica'
+    role:str
+    area_id:int
+    area_name:str
     
     class Config:
         from_attributes = True
