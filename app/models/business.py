@@ -2,6 +2,14 @@ from app.models.base import BaselineModel
 from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Enum
 from app.enums.business import OrderStatusEnum
 
+class Customer(BaselineModel):
+    __tablename__ = 'customers'
+    
+    organization = Column(String, nullable=True, index=True)
+    name = Column(String, nullable=False)
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+
 class Area(BaselineModel):
     __tablename__ = 'areas'
     
