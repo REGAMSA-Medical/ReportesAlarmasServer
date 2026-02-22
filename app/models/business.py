@@ -26,8 +26,10 @@ class Order(BaselineModel):
     
     customer_id = Column(Integer, ForeignKey('customers.id'), nullable=False)
     product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
-    stage = Column(Integer, ForeignKey('stages.id'), nullable=False, default=1, index=True)
+    quantity = Column(Integer, nullable=False, default=1)
+    stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False, default=1, index=True)
     status = Column(Enum(OrderStatusEnum), nullable=False, default=OrderStatusEnum.NOT_STARTED, index=True)
+    description = Column(String, nullable=True)
 
 class OrderStageEvidence(BaselineModel):
     __tablename__ = 'order_stage_evidence'
