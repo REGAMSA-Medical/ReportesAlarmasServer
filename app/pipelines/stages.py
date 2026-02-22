@@ -7,7 +7,7 @@ STAGES_LIST = ['Under Review', 'To Do', 'Production', 'Testing', 'Shipping', 'De
 
 async def insertStagesPipeline(db: AsyncSession):
     """
-    Inserta las áreas base si no existen en la base de datos.
+    Inserta las stages base si no existen en la base de datos.
     """
     try:
         # Obtain stages that already exist
