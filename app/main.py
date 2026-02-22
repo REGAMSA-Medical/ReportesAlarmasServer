@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . database import end_db, get_db
 from . utils.logger import logger
 from . pipelines.areas import insertAreasPipeline
+from . pipelines.stages import insertStagesPipeline
 # Import routers
 from app.routes.authentication import router as authRouter
 from app.routes.business import router as businessRouter
@@ -17,6 +18,7 @@ async def lifespan(app: FastAPI):
         async_session_generator = get_db()
         db = await anext(async_session_generator)
         await insertAreasPipeline(db)
+        await insertStagesPipeline(db)
     except Exception as e:
         logger.error(f'API Init Error: {e}')
     yield
