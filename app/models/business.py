@@ -1,5 +1,6 @@
 from app.models.base import BaselineModel
 from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Enum
+from sqlalchemy.orm import relationship
 from app.enums.business import OrderStatusEnum
 
 class Customer(BaselineModel):
@@ -24,6 +25,7 @@ class Stage(BaselineModel):
 class Order(BaselineModel):
     __tablename__ = 'orders'
     
+    area_id = Column(Integer, ForeignKey('areas.id'), nullable=False)
     customer_id = Column(Integer, ForeignKey('customers.id'), nullable=False)
     product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
     quantity = Column(Integer, nullable=False, default=1)
@@ -38,3 +40,18 @@ class OrderStageEvidence(BaselineModel):
     stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False, index=True)
     evidence_url = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    
+class OrderHistoryTrack(BaselineModel):
+    __tablename__ = 'order_history_track'
+    
+    order_id = Column(Integer, ForeignKey('orders.id'), nullable=False, index=True)
+    stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
+    area_id = Column(Integer, ForeignKey('areas.id'), nullable=False, index=True)
+    status = Column(String, nullable=False) 
+    notes = Column(String, nullable=True)
+    # Joins
+    order = relationship("Order")
+    stage = relationship("Stage")
+    product = relationship("Product")
+    area = relationship("Area")
