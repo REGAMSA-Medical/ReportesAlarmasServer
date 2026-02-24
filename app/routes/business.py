@@ -31,7 +31,7 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
     
     
 @router.get('/recentActivityByUserArea')
-async def get_recent_activity_by_user_area(id, db: AsyncSession = Depends(get_db)):
+async def get_recent_activity_by_user_area(id:int, db: AsyncSession = Depends(get_db)):
     try:
         query = (
             select(
@@ -67,48 +67,27 @@ async def get_recent_activity_by_user_area(id, db: AsyncSession = Depends(get_db
     
     
 @router.get('/ordersOverallInfoByUserArea')
-async def get_orders_overall_info_by_user_area(id, db: AsyncSession = Depends(get_db)):
+async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
     try:
-        # Under review 
-        query = select(Order).where(Order.stage=='Under Review', Order.area_id==id)
-        result = await db.execute(query)
-        under_review = result.scalars().all()
-        
-        # To do
-        query = select(Order).where(Order.stage=='To Do', Order.area_id==id)
-        result = await db.execute(query)
-        to_do = result.scalars().all()
-        
-        # Production
-        query = select(Order).where(Order.stage=='Production', Order.area_id==id)
-        result = await db.execute(query)
-        production = result.scalars().all()
-        
-        # Quality assurance
-        query = select(Order).where(Order.stage=='Testing', Order.area_id==id)
-        result = await db.execute(query)
-        testing = result.scalars().all()
-        
-        # Shipping
-        query = select(Order).where(Order.stage=='Shipping', Order.area_id==id)
-        result = await db.execute(query)
-        shipping = result.scalars().all()
-        
-        # Delivery
-        query = select(Order).where(Order.stage=='Delivery', Order.area_id==id)
-        result = await db.execute(query)
-        delivery = result.scalars().all()
-        
+        async def get_orders_by_stage(stage_name: str):
+            query = (
+                select(Order)
+                .join(Stage, Order.stage_id == Stage.id)
+                .where(Stage.name == stage_name, Order.area_id == id)
+            )
+            result = await db.execute(query)
+            return result.scalars().all()
+
         return {
-                {
-                    'to_do':to_do,
-                    'production':production,
-                    'testing':testing,
-                    'shipping':shipping,
-                    'delivery':delivery,
-                    'under_review':under_review
-                }
+            "items": {
+                'under_review': await get_orders_by_stage('Under Review'),
+                'to_do': await get_orders_by_stage('To Do'),
+                'production': await get_orders_by_stage('Production'),
+                'testing': await get_orders_by_stage('Testing'),
+                'shipping': await get_orders_by_stage('Shipping'),
+                'delivery': await get_orders_by_stage('Delivery'),
             }
+        }
     except Exception as e:
         logger.error(f'Unexpected Error: {str(e)}')
-        raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

@@ -32,6 +32,8 @@ class Order(BaselineModel):
     stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False, default=1, index=True)
     status = Column(Enum(OrderStatusEnum), nullable=False, default=OrderStatusEnum.NOT_STARTED, index=True)
     description = Column(String, nullable=True)
+    # Joins
+    stage = relationship("Stage")
 
 class OrderStageEvidence(BaselineModel):
     __tablename__ = 'order_stage_evidence'
