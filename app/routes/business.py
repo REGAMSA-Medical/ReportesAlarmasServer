@@ -80,12 +80,9 @@ async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depen
 
         return {
             "items": {
-                'under_review': await get_orders_by_stage('Under Review'),
-                'to_do': await get_orders_by_stage('To Do'),
-                'production': await get_orders_by_stage('Production'),
-                'testing': await get_orders_by_stage('Testing'),
-                'shipping': await get_orders_by_stage('Shipping'),
-                'delivery': await get_orders_by_stage('Delivery'),
+                'new': await get_orders_by_stage('Under Review'),
+                'process': await get_orders_by_stage('To Do'),
+                'completed': await get_orders_by_stage('Production'),
             }
         }
     except Exception as e:
