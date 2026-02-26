@@ -60,7 +60,7 @@ async def get_recent_activity_by_user_area(id:int, db: AsyncSession = Depends(ge
             for row in result.all()
         ]
         
-        return {"items": history_data}
+        return history_data
     except Exception as e:
         logger.error(f"Unexpected Error: {e}")
         raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
