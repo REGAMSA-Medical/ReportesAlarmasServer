@@ -4,6 +4,11 @@ from app.models.business import Area
 from app.utils.logger import logger
 from app.enums.business import AreaCategoryEnum
 
+"""
+Pipelines for insertion at db level
+of initial & base, business necesary data
+"""
+
 AREAS_LIST = [
     ['Dirección', AreaCategoryEnum.ADMINISTRATION],
     ['Alarmas', AreaCategoryEnum.ENGINEERING], 
@@ -20,7 +25,7 @@ AREAS_LIST = [
 
 async def insertAreasPipeline(db: AsyncSession):
     """
-    Inserta las áreas base si no existen en la base de datos.
+    Insert base areas in db if they don't exist.
     """
     try:
         # Obtain areas that already exist
