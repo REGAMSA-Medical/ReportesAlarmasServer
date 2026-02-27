@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends
 from fastapi.exceptions import HTTPException
 from app.database import get_db
 from sqlalchemy import select
-from app.models.business import Area, Order
+from app.models.business import Area, Order, OrderHistoryTrack, Stage
+from app.models.products import Product
 from app.serializers.business import AreaReadSerializer
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,49 +29,62 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
         logger.error(f"Areas List Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
     
-@router.get('/ordersOverallInfoByUserArea')
-async def get_orders_overall_info_by_user_area(id, db: AsyncSession = Depends(get_db)):
+    
+@router.get('/recentActivityByUserArea')
+async def get_recent_activity_by_user_area(id:int, db: AsyncSession = Depends(get_db)):
     try:
-        # Under review 
-        query = select(Order).where(Order.stage=='Under Review', Order.area_id==id)
-        result = await db.execute(query)
-        under_review = result.scalars().all()
+        query = (
+            select(
+                OrderHistoryTrack.id,
+                Product.model,
+                OrderHistoryTrack.status,
+                Stage.name.label("stage_name"),
+                OrderHistoryTrack.created_at.label("date")
+            )
+            .join(Product, OrderHistoryTrack.product_id == Product.id)
+            .join(Stage, OrderHistoryTrack.stage_id == Stage.id)
+            .where(OrderHistoryTrack.area_id == id)
+            .order_by(OrderHistoryTrack.created_at.desc())
+        )
         
-        # To do
-        query = select(Order).where(Order.stage=='To Do', Order.area_id==id)
         result = await db.execute(query)
-        to_do = result.scalars().all()
         
-        # Production
-        query = select(Order).where(Order.stage=='Production', Order.area_id==id)
-        result = await db.execute(query)
-        production = result.scalars().all()
+        history_data = [
+            {
+                "id": row.id,
+                "model": row.model,
+                "status": row.status,
+                "stage": row.stage_name,
+                "date": row.date
+            } 
+            for row in result.all()
+        ]
         
-        # Quality assurance
-        query = select(Order).where(Order.stage=='Testing', Order.area_id==id)
-        result = await db.execute(query)
-        testing = result.scalars().all()
-        
-        # Shipping
-        query = select(Order).where(Order.stage=='Shipping', Order.area_id==id)
-        result = await db.execute(query)
-        shipping = result.scalars().all()
-        
-        # Delivery
-        query = select(Order).where(Order.stage=='Delivery', Order.area_id==id)
-        result = await db.execute(query)
-        delivery = result.scalars().all()
-        
+        return history_data
+    except Exception as e:
+        logger.error(f"Unexpected Error: {e}")
+        raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
+    
+    
+@router.get('/ordersOverallInfoByUserArea')
+async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
+    try:
+        async def get_orders_by_stage(stage_name: str):
+            query = (
+                select(Order)
+                .join(Stage, Order.stage_id == Stage.id)
+                .where(Stage.name == stage_name, Order.area_id == id)
+            )
+            result = await db.execute(query)
+            return result.scalars().all()
+
         return {
-                'item': {
-                    'to_do':to_do,
-                    'production':production,
-                    'testing':testing,
-                    'shipping':shipping,
-                    'delivery':delivery,
-                    'under_review':under_review
-                }
+            "items": {
+                'new': await get_orders_by_stage('Under Review'),
+                'process': await get_orders_by_stage('To Do'),
+                'completed': await get_orders_by_stage('Production'),
             }
+        }
     except Exception as e:
         logger.error(f'Unexpected Error: {str(e)}')
-        raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
