@@ -1,7 +1,7 @@
 from app.models.base import BaselineModel
 from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Enum
 from sqlalchemy.orm import relationship
-from app.enums.business import OrderStatusEnum
+from app.enums.business import OrderStatusEnum, AreaCategoryEnum
 
 class Customer(BaselineModel):
     __tablename__ = 'customers'
@@ -16,6 +16,11 @@ class Area(BaselineModel):
     
     name = Column(String, nullable=False, unique=True)
     managed = Column(Boolean, nullable=False, default=False)
+    """ Each Area independently of its name, must have a category. For example, there are 6 types of devices the enterprise produces,
+    then, for every one of these devices, they have their engineering behind, despite they area different, they all are from an
+    area that is of engineering type. So, this is applicable for administration, there are Human Resources and Customer Service,
+    these both areas are of administration category"""
+    category = Column(Enum(AreaCategoryEnum), nullable=False, default=AreaCategoryEnum.PRODUCTION, index=True) 
     
 class Stage(BaselineModel):
     __tablename__ = 'stages'
