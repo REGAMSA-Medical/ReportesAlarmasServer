@@ -40,23 +40,52 @@ class Stage(BaselineModel):
 class Order(BaselineModel):
     __tablename__ = 'orders'
     
-    area_id = Column(Integer, ForeignKey('areas.id'), nullable=False)
     customer_id = Column(Integer, ForeignKey('customers.id'), nullable=False)
     product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
     quantity = Column(Integer, nullable=False, default=1)
-    stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False, default=1, index=True)
-    status = Column(Enum(OrderStatusEnum), nullable=False, default=OrderStatusEnum.NOT_STARTED, index=True)
+    stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False, default=1, index=True) # To Kno in which stage the order is at the moment
+    status = Column(Enum(OrderStatusEnum), nullable=False, default=OrderStatusEnum.NOT_STARTED, index=True) # Completed, Not Started, In Progress, Canceled
+    current_area_id = Column(Integer, ForeignKey('areas.id'), nullable=False, index=True)
     description = Column(String, nullable=True)
     # Joins
     stage = relationship("Stage")
 
 class OrderStageEvidence(BaselineModel):
+    """
+    Order-Stage evidence is only saved when the order's process in the specific stage
+    is completed, then, the manager can upload an image as evidence.
+    These are instances only for historic and evidence purposse.
+    """
+    
     __tablename__ = 'order_stage_evidence'
     
     order_id = Column(Integer, ForeignKey('orders.id'), nullable=False, index=True)
     stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False, index=True)
     evidence_url = Column(String, nullable=False)
     description = Column(String, nullable=True)
+
+class AreaStageProductConfig(BaselineModel):
+    """
+    Defines the visibility and responsibility matrix for different enterprise areas.
+
+    This model acts as a master filter to restrict which orders a department manager 
+    can monitor or manage based on their area's specialized scope. For example, 
+    the 'Brazos' area manager should only be authorized to view orders currently 
+    in 'Ingeniería' or 'Producción' stages, and specifically for 'Brazos' type products.
+
+    area_id: Reference to the specific department (Brazos, Compresores).
+    stage_id: Reference to the authorized workflow stage (Producción, Ingeniería, Administración).
+    product_id: Optional reference to a specific product model. If null, the area has visibility over all products within that stage.
+    """
+    __tablename__ = 'area_stage_product_config'
+    
+    area_id = Column(Integer, ForeignKey('areas.id'), nullable=False)
+    stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=True) # Si es null, aplica a todos los productos de esa área
+    
+    area = relationship("Area")
+    stage = relationship("Stage")
+    product = relationship("Product")
     
 class OrderHistoryTrack(BaselineModel):
     __tablename__ = 'order_history_track'
