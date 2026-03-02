@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.exceptions import HTTPException
 from app.database import get_db
 from sqlalchemy import select
-from app.models.business import Area, Order, OrderHistoryTrack, Stage
+from app.models.business import Area, Order, OrderHistoryTrack, Stage, AreaStageProductConfig
 from app.models.products import Product
 from app.serializers.business import AreaReadSerializer
 from sqlalchemy.future import select
@@ -31,8 +31,18 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
     
     
 @router.get('/recentActivityByUserArea')
-async def get_recent_activity_by_user_area(id:int, db: AsyncSession = Depends(get_db)):
+async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
     try:
+        config_query = select(AreaStageProductConfig).where(AreaStageProductConfig.area_id == id)
+        config_result = await db.execute(config_query)
+        allowed_configs = config_result.scalars().all()
+
+        if not allowed_configs:
+            return {"items": []}
+
+        allowed_stages = [c.stage_id for c in allowed_configs]
+        allowed_products = [c.product_id for c in allowed_configs if c.product_id is not None]
+
         query = (
             select(
                 OrderHistoryTrack.id,
@@ -44,8 +54,13 @@ async def get_recent_activity_by_user_area(id:int, db: AsyncSession = Depends(ge
             .join(Product, OrderHistoryTrack.product_id == Product.id)
             .join(Stage, OrderHistoryTrack.stage_id == Stage.id)
             .where(OrderHistoryTrack.area_id == id)
-            .order_by(OrderHistoryTrack.created_at.desc())
+            .where(OrderHistoryTrack.stage_id.in_(allowed_stages)) # Solo stages autorizados
         )
+
+        if allowed_products:
+            query = query.where(OrderHistoryTrack.product_id.in_(allowed_products))
+
+        query = query.order_by(OrderHistoryTrack.created_at.desc())
         
         result = await db.execute(query)
         
@@ -60,11 +75,11 @@ async def get_recent_activity_by_user_area(id:int, db: AsyncSession = Depends(ge
             for row in result.all()
         ]
         
-        return history_data
+        return {"items": history_data}
+
     except Exception as e:
-        logger.error(f"Unexpected Error: {e}")
-        raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
-    
+        logger.error(f"Unexpected Error in Recent Activity: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")  
     
 @router.get('/ordersOverallInfoByUserArea')
 async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
