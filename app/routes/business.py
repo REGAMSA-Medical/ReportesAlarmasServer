@@ -39,7 +39,7 @@ async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(g
         allowed_configs = config_result.scalars().all()
 
         if not allowed_configs:
-            return {"items": []}
+            return HTTPException(status_code=404)
 
         allowed_stages = [c.stage_id for c in allowed_configs]
         allowed_products = [c.product_id for c in allowed_configs if c.product_id is not None]
