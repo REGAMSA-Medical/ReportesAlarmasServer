@@ -34,6 +34,11 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
     
 @router.get('/recentActivityByUserArea')
 async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Get recent activity by user area (new assigned tasks, moment when a task is started, a task is completed, cancelled tasks, etc)
+    Only area managers can access to this info directly.
+    This retrieves the order track id, product model, order status, order stage and datetime when this event was registered.
+    """
     try:
         config_query = select(AreaStageProductConfig).where(AreaStageProductConfig.area_id == id)
         config_result = await db.execute(config_query)
