@@ -8,6 +8,7 @@ from app.serializers.business import AreaReadSerializer
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.logger import logger
+from app.enums.business import OrderStatusEnum
 
 router = APIRouter(prefix='/business', tags=['Business'])
 
@@ -84,20 +85,20 @@ async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(g
 @router.get('/ordersOverallInfoByUserArea')
 async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
     try:
-        async def get_orders_by_stage(stage_name: str):
+        async def get_orders_by_status(status: OrderStatusEnum):
             query = (
                 select(Order)
                 .join(Stage, Order.stage_id == Stage.id)
-                .where(Stage.name == stage_name, Order.area_id == id)
+                .where(Order.status == status, Order.current_area_id == id)
             )
             result = await db.execute(query)
             return result.scalars().all()
 
         return {
             "items": {
-                'new': await get_orders_by_stage('Under Review'),
-                'process': await get_orders_by_stage('To Do'),
-                'completed': await get_orders_by_stage('Production'),
+                'new': await get_orders_by_status(OrderStatusEnum.NOT_STARTED),
+                'process': await get_orders_by_status(OrderStatusEnum.IN_PROGRESS),
+                'completed': await get_orders_by_status(OrderStatusEnum.COMPLETED),
             }
         }
     except Exception as e:
