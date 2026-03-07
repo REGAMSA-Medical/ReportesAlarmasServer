@@ -92,6 +92,10 @@ async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(g
     
 @router.get('/ordersOverallInfoByUserArea')
 async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Get all orders asigned to an area categorized by their status (new/not started, in progress, completed).
+    Every one of this categorized orders include all fields from its Order model.
+    """
     try:
         async def get_orders_by_status(status: OrderStatusEnum):
             query = (
