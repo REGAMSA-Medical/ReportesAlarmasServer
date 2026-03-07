@@ -48,7 +48,10 @@ class Order(BaselineModel):
     current_area_id = Column(Integer, ForeignKey('areas.id'), nullable=False, index=True)
     description = Column(String, nullable=True)
     # Joins
-    stage = relationship("Stage")
+    stage = relationship("Stage", lazy="selectin")
+    customer = relationship("Customer", lazy="selectin")
+    product = relationship("Product", lazy="selectin")
+    area = relationship("Area",  lazy="selectin")
 
 class OrderStageEvidence(BaselineModel):
     """
