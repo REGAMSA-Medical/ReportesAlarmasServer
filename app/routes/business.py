@@ -9,6 +9,7 @@ from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.logger import logger
 from app.enums.business import OrderStatusEnum
+from datetime import timedelta, timezone
 
 router = APIRouter(prefix='/business', tags=['Business'])
 
@@ -43,6 +44,7 @@ async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(g
 
         allowed_stages = [c.stage_id for c in allowed_configs]
         allowed_products = [c.product_id for c in allowed_configs if c.product_id is not None]
+        from datetime import datetime
 
         query = (
             select(
@@ -55,7 +57,8 @@ async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(g
             .join(Product, OrderHistoryTrack.product_id == Product.id)
             .join(Stage, OrderHistoryTrack.stage_id == Stage.id)
             .where(OrderHistoryTrack.area_id == id)
-            .where(OrderHistoryTrack.stage_id.in_(allowed_stages)) # Solo stages autorizados
+            .where(OrderHistoryTrack.stage_id.in_(allowed_stages))
+            .where(OrderHistoryTrack.created_at >= datetime.now(timezone.utc) - timedelta(weeks=2))
         )
 
         if allowed_products:
