@@ -39,7 +39,8 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
             select(
                 Area.id.label("area_id"), 
                 Area.name.label("area_name"), 
-                User.name.label("area_manager_name")
+                User.firstname.label("area_manager_firstname"),
+                User.first_lastname.label("area_manager_lastname")
             )
             .join(User, Area.id == User.area_id)
             .where(
@@ -60,7 +61,7 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
             {
                 "area_id": row["area_id"],
                 "area_name": row["area_name"],
-                "area_manager_name": row["area_manager_name"]
+                "area_manager_name": f'{row["area_manager_firstname"]} {row["area_manager_lastname"]}'
             } 
             for row in areas_from_db
         ]
