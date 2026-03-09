@@ -2,15 +2,30 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.business import Area 
 from app.utils.logger import logger
+from app.enums.business import AreaCategoryEnum
+
+"""
+Pipelines for insertion at db level
+of initial & base, business necesary data
+"""
 
 AREAS_LIST = [
-    'Dirección', 'Alarmas', 'Brazos', 'Torno', 'RRHH', 
-    'Ventas', 'Consolas', 'Compresores', 'Laser', 'Almacen'
+    ['Dirección', AreaCategoryEnum.ADMINISTRATION],
+    ['Alarmas', AreaCategoryEnum.ENGINEERING], 
+    ['Brazos', AreaCategoryEnum.ENGINEERING], 
+    ['Torno', AreaCategoryEnum.PRODUCTION], 
+    ['RRHH', AreaCategoryEnum.ADMINISTRATION], 
+    ['Ventas', AreaCategoryEnum.ADMINISTRATION], 
+    ['Consolas', AreaCategoryEnum.ENGINEERING], 
+    ['Compresores', AreaCategoryEnum.ENGINEERING], 
+    ['Laser', AreaCategoryEnum.PRODUCTION],
+    ['Almacen', AreaCategoryEnum.LOGISTICS], 
+    ['Entregas', AreaCategoryEnum.LOGISTICS],
 ]
 
 async def insertAreasPipeline(db: AsyncSession):
     """
-    Inserta las áreas base si no existen en la base de datos.
+    Insert base areas in db if they don't exist.
     """
     try:
         # Obtain areas that already exist
@@ -20,9 +35,9 @@ async def insertAreasPipeline(db: AsyncSession):
         areas_to_insert = []
         
         # Filter areas that do not exist yet
-        for name in AREAS_LIST:
+        for name, category in AREAS_LIST:
             if name not in existing_areas:
-                areas_to_insert.append(Area(name=name, managed=False))
+                areas_to_insert.append(Area(name=name, category=category, managed=False))
                 
         if not areas_to_insert:
             logger.info('There are no new areas to insert')

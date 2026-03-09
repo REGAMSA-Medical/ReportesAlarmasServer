@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends
 from fastapi.exceptions import HTTPException
 from app.database import get_db
 from sqlalchemy import select
-from app.models.business import Area, Order, OrderHistoryTrack, Stage
+from app.models.business import Area, Order, OrderHistoryTrack, Stage, AreaStageProductConfig
 from app.models.products import Product
 from app.serializers.business import AreaReadSerializer
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.logger import logger
+from app.enums.business import OrderStatusEnum
+from datetime import timedelta, timezone
 
 router = APIRouter(prefix='/business', tags=['Business'])
 
@@ -31,8 +33,24 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
     
     
 @router.get('/recentActivityByUserArea')
-async def get_recent_activity_by_user_area(id:int, db: AsyncSession = Depends(get_db)):
+async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Get recent activity by user area (new assigned tasks, moment when a task is started, a task is completed, cancelled tasks, etc)
+    Only area managers can access to this info directly.
+    This retrieves the order track id, product model, order status, order stage and datetime when this event was registered.
+    """
     try:
+        config_query = select(AreaStageProductConfig).where(AreaStageProductConfig.area_id == id)
+        config_result = await db.execute(config_query)
+        allowed_configs = config_result.scalars().all()
+
+        if not allowed_configs:
+            return HTTPException(status_code=404)
+
+        allowed_stages = [c.stage_id for c in allowed_configs]
+        allowed_products = [c.product_id for c in allowed_configs if c.product_id is not None]
+        from datetime import datetime
+
         query = (
             select(
                 OrderHistoryTrack.id,
@@ -44,8 +62,14 @@ async def get_recent_activity_by_user_area(id:int, db: AsyncSession = Depends(ge
             .join(Product, OrderHistoryTrack.product_id == Product.id)
             .join(Stage, OrderHistoryTrack.stage_id == Stage.id)
             .where(OrderHistoryTrack.area_id == id)
-            .order_by(OrderHistoryTrack.created_at.desc())
+            .where(OrderHistoryTrack.stage_id.in_(allowed_stages))
+            .where(OrderHistoryTrack.created_at >= datetime.now(timezone.utc) - timedelta(weeks=2))
         )
+
+        if allowed_products:
+            query = query.where(OrderHistoryTrack.product_id.in_(allowed_products))
+
+        query = query.order_by(OrderHistoryTrack.created_at.desc())
         
         result = await db.execute(query)
         
@@ -60,29 +84,33 @@ async def get_recent_activity_by_user_area(id:int, db: AsyncSession = Depends(ge
             for row in result.all()
         ]
         
-        return history_data
+        return {"items": history_data}
+
     except Exception as e:
-        logger.error(f"Unexpected Error: {e}")
-        raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
-    
+        logger.error(f"Unexpected Error in Recent Activity: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")  
     
 @router.get('/ordersOverallInfoByUserArea')
 async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Get all orders asigned to an area categorized by their status (new/not started, in progress, completed).
+    Every one of this categorized orders include all fields from its Order model.
+    """
     try:
-        async def get_orders_by_stage(stage_name: str):
+        async def get_orders_by_status(status: OrderStatusEnum):
             query = (
                 select(Order)
                 .join(Stage, Order.stage_id == Stage.id)
-                .where(Stage.name == stage_name, Order.area_id == id)
+                .where(Order.status == status, Order.current_area_id == id)
             )
             result = await db.execute(query)
             return result.scalars().all()
 
         return {
             "items": {
-                'new': await get_orders_by_stage('Under Review'),
-                'process': await get_orders_by_stage('To Do'),
-                'completed': await get_orders_by_stage('Production'),
+                'new': await get_orders_by_status(OrderStatusEnum.NOT_STARTED),
+                'process': await get_orders_by_status(OrderStatusEnum.IN_PROGRESS),
+                'completed': await get_orders_by_status(OrderStatusEnum.COMPLETED),
             }
         }
     except Exception as e:

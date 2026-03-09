@@ -2,8 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.business import Stage 
 from app.utils.logger import logger
-
-STAGES_LIST = ['Under Review', 'To Do', 'Production', 'Testing', 'Shipping', 'Delivery']
+from app.enums.business import OrderStageEnum
 
 async def insertStagesPipeline(db: AsyncSession):
     """
@@ -17,7 +16,7 @@ async def insertStagesPipeline(db: AsyncSession):
         stages_to_insert = []
         
         # Filter stages that do not exist yet
-        for name in STAGES_LIST:
+        for name in OrderStageEnum:
             if name not in existing_areas:
                 stages_to_insert.append(Stage(name=name))
                 
