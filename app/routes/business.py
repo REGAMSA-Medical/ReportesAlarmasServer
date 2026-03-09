@@ -4,6 +4,7 @@ from app.database import get_db
 from sqlalchemy import select
 from app.models.business import Area, Order, OrderHistoryTrack, Stage, AreaStageProductConfig
 from app.models.products import Product
+from app.models.authentication import User
 from app.serializers.business import AreaReadSerializer
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +32,43 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
         logger.error(f"Areas List Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
     
+@router.get('/areas/list/simplified')
+async def get_areas(db: AsyncSession = Depends(get_db)):
+    try:
+        query = (
+            select(
+                Area.id.label("area_id"), 
+                Area.name.label("area_name"), 
+                User.name.label("area_manager_name")
+            )
+            .join(User, Area.id == User.area_id)
+            .where(
+                Area.managed == True, 
+                Area.name != 'Dirección'
+            )
+        )
+        
+        result = await db.execute(query)
+        
+        areas_from_db = result.mappings().all()
+    
+        if not areas_from_db:
+            raise HTTPException(status_code=404, detail='No se encontraron áreas disponibles')
+
+       # Format manually (Serializers do not work here because the query did not returned complete objects)
+        areas = [
+            {
+                "area_id": row["area_id"],
+                "area_name": row["area_name"],
+                "area_manager_name": row["area_manager_name"]
+            } 
+            for row in areas_from_db
+        ]
+        
+        return {'items': areas}
+    except Exception as e:
+        logger.error(f"Areas List Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
     
 @router.get('/recentActivityByUserArea')
 async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
