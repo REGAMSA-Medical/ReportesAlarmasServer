@@ -1,7 +1,8 @@
 from app.models.base import BaselineModel
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Enum
+from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Enum, DateTime
 from sqlalchemy.orm import relationship
 from app.enums.business import OrderStatusEnum, AreaCategoryEnum, OrderStageEnum
+from datetime import datetime
 
 class Customer(BaselineModel):
     __tablename__ = 'customers'
@@ -83,7 +84,7 @@ class AreaStageProductConfig(BaselineModel):
     __tablename__ = 'area_stage_product_config'
     
     area_id = Column(Integer, ForeignKey('areas.id'), nullable=False)
-    stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False)
+    stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False) # Producción, Embalaje, Ingeniería. etc.
     product_id = Column(Integer, ForeignKey('products.id'), nullable=True) # Si es null, aplica a todos los productos de esa área
     
     area = relationship("Area")
@@ -104,3 +105,19 @@ class OrderHistoryTrack(BaselineModel):
     stage = relationship("Stage")
     product = relationship("Product")
     area = relationship("Area")
+    
+class Task(BaselineModel):
+    """
+    Tasks that are assigned from one area to another one. These tasks do not estrictly have to be related to the base
+    product fabrication and delivery workflow, these can be tasks that are not contemplated, and only appear spontaneously.
+    """
+    __tablename__ = 'tasks'
+    
+    description =  Column(String, nullable=False) # Detalles de la tarea, descripción corta, instrucciones, etc
+    from_area_id = Column(Integer, ForeignKey('areas.id'), nullable=False, index=True) # Área que asigna la tarea
+    to_area_id = Column(Integer, ForeignKey('areas.id'), nullable=False, index=True) # Área a la cual se asigna la tarea
+    due_date = Column(DateTime, default=datetime.today, nullable=False) # Fecha de entrega sugerida/estimada
+    is_completed = Column(Boolean, default=False, nullable=False, index=True) # El primer paso es completar la tarea, aunqué no sea aceptada aún
+    completed_at = Column(DateTime, nullable=True) # La fecha y hora en la cual fue completada la tarea
+    is_acepted = Column(Boolean, default=False, nullable=False, index=True) # Es aceptada por el encargado de área que solicitó la tarea a otra área
+    evidence_url = Column(String, nullable=True) # NO es necesario subir evidencia en estas tareas
