@@ -114,10 +114,11 @@ class Task(BaselineModel):
     __tablename__ = 'tasks'
     
     description =  Column(String, nullable=False) # Detalles de la tarea, descripción corta, instrucciones, etc
+    reference_url = Column(String, nullable=True) # [Opcional]Referencia para la tarea a asignar (imagen, documento, archivo, etc.)
     from_area_id = Column(Integer, ForeignKey('areas.id'), nullable=False, index=True) # Área que asigna la tarea
     to_area_id = Column(Integer, ForeignKey('areas.id'), nullable=False, index=True) # Área a la cual se asigna la tarea
     due_date = Column(DateTime, default=datetime.today, nullable=False) # Fecha de entrega sugerida/estimada
     is_completed = Column(Boolean, default=False, nullable=False, index=True) # El primer paso es completar la tarea, aunqué no sea aceptada aún
     completed_at = Column(DateTime, nullable=True) # La fecha y hora en la cual fue completada la tarea
     is_acepted = Column(Boolean, default=False, nullable=False, index=True) # Es aceptada por el encargado de área que solicitó la tarea a otra área
-    evidence_url = Column(String, nullable=True) # NO es necesario subir evidencia en estas tareas
+    evidence_url = Column(String, nullable=True) # [Opcional] Evidencia de la tarea completada (imagen, documento, archivo, etc.)
