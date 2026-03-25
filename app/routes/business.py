@@ -1,19 +1,24 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from fastapi.exceptions import HTTPException
+from fastapi import File, Form, UploadFile
+from typing import Optional
 from app.database import get_db
 from sqlalchemy import select
-from app.models.business import Area, Order, OrderHistoryTrack, Stage, AreaStageProductConfig
+from sqlalchemy.future import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timedelta, timezone
+from app.models.business import Area, Order, OrderHistoryTrack, Stage, AreaStageProductConfig, Task
 from app.models.products import Product
 from app.models.authentication import User
 from app.serializers.business import AreaReadSerializer
-from sqlalchemy.future import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.logger import logger
 from app.enums.business import OrderStatusEnum
-from datetime import timedelta, timezone
+
 
 router = APIRouter(prefix='/business', tags=['Business'])
 
+
+# AREAS
 @router.get('/areas/list')
 async def get_areas(db: AsyncSession = Depends(get_db)):
     try:
@@ -71,6 +76,8 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
         logger.error(f"Areas List Error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
     
+    
+# ORDERS
 @router.get('/recentActivityByUserArea')
 async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
     """
@@ -155,3 +162,119 @@ async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depen
     except Exception as e:
         logger.error(f'Unexpected Error: {str(e)}')
         raise HTTPException(status_code=500, detail="Error interno del servidor")
+
+async def save_file(file: UploadFile) -> str:
+    """
+    Save uploaded file to the media directory organized by file type.
+    
+    This function accepts an uploaded file, determines its type based on MIME type,
+    saves it to the appropriate subdirectory (images, audios, documents, videos, other),
+    and returns the relative file path.
+    
+    Args:
+        file (UploadFile): The uploaded file from FastAPI
+        
+    Returns:
+        str: Relative path to the saved file (e.g., "media/images/filename.jpg")
+        
+    Raises:
+        HTTPException: If there's an error saving the file
+    """
+    import os
+    import shutil
+    from pathlib import Path
+    from fastapi import HTTPException
+    
+    # Define media directory path (project root level)
+    media_dir = Path("media")
+    
+    # Create media directory if it doesn't exist
+    media_dir.mkdir(exist_ok=True)
+    
+    # Determine file type based on MIME type
+    mime_type = file.content_type or ""
+    
+    if mime_type.startswith("image/"):
+        subdir = "images"
+    elif mime_type.startswith("audio/"):
+        subdir = "audios"
+    elif mime_type.startswith("video/"):
+        subdir = "videos"
+    elif mime_type in ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
+                       "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                       "text/plain", "application/json"]:
+        subdir = "documents"
+    else:
+        subdir = "other"
+    
+    # Create subdirectory if it doesn't exist
+    subdir_path = media_dir / subdir
+    subdir_path.mkdir(exist_ok=True)
+    
+    # Generate unique filename to avoid collisions
+    import uuid
+    from datetime import datetime
+    
+    # Get file extension
+    file_extension = Path(file.filename).suffix if file.filename else ""
+    
+    # Create unique filename: timestamp_uuid.extension
+    unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}{file_extension}"
+    
+    # Define full file path
+    file_path = subdir_path / unique_filename
+    
+    try:
+        # Save the file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Return relative path from project root
+        return str(file_path)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    
+    
+# TASKS
+@router.post('/tasks')
+async def create_task(
+    description: str = Form(...),
+    reference_url: Optional[str] = Form(None),
+    from_area_id: int = Form(...),
+    to_area_id: int = Form(...),
+    due_date: datetime = Form(...),
+    file: Optional[UploadFile] = File(None),  # Optional file upload
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # Handle file upload if provided
+        file_url = None
+        if file:
+            # Save file to your storage (local, S3, etc.)
+            file_url = await save_file(file)  # Implement this function
+        
+        new_task = Task(
+            description=description,
+            reference_url=reference_url,
+            from_area_id=from_area_id,
+            to_area_id=to_area_id,
+            due_date=due_date,
+            is_completed=False,
+            completed_at=None,
+            is_acepted=False,
+            evidence_url=None
+        )
+        
+        db.add(new_task)
+        await db.commit()
+        await db.refresh(new_task)
+        logger.info(f"Task created successfully [{new_task.id}]")
+        
+        return Response(content={'item': new_task}, status_code=201)
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f'Server Error: {str(e)}', exc_info=True)
+        raise HTTPException(status_code=500, detail=f'Server Error: {str(e)}')
