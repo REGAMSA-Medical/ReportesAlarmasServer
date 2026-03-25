@@ -166,19 +166,9 @@ async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depen
 async def save_file(file: UploadFile) -> str:
     """
     Save uploaded file to the media directory organized by file type.
-    
     This function accepts an uploaded file, determines its type based on MIME type,
     saves it to the appropriate subdirectory (images, audios, documents, videos, other),
     and returns the relative file path.
-    
-    Args:
-        file (UploadFile): The uploaded file from FastAPI
-        
-    Returns:
-        str: Relative path to the saved file (e.g., "media/images/filename.jpg")
-        
-    Raises:
-        HTTPException: If there's an error saving the file
     """
     import os
     import shutil
@@ -238,21 +228,13 @@ async def save_file(file: UploadFile) -> str:
     
 # TASKS
 @router.post('/tasks')
-async def create_task(
-    description: str = Form(...),
-    reference_url: Optional[str] = Form(None),
-    from_area_id: int = Form(...),
-    to_area_id: int = Form(...),
-    due_date: datetime = Form(...),
-    file: Optional[UploadFile] = File(None),  # Optional file upload
-    db: AsyncSession = Depends(get_db)
-):
+async def create_task( description: str = Form(...), reference_url: Optional[str] = Form(None), from_area_id: int = Form(...), to_area_id: int = Form(...), due_date: datetime = Form(...), file: Optional[UploadFile] = File(None), db: AsyncSession = Depends(get_db)):
     try:
         # Handle file upload if provided
         file_url = None
         if file:
-            # Save file to your storage (local, S3, etc.)
-            file_url = await save_file(file)  # Implement this function
+            # Save file to media
+            file_url = await save_file(file) 
         
         new_task = Task(
             description=description,
