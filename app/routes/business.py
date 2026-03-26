@@ -12,11 +12,8 @@ from app.models.authentication import User
 from app.serializers.business import AreaReadSerializer
 from app.utils.logger import logger
 from app.enums.business import OrderStatusEnum
-import json
-
 
 router = APIRouter(prefix='/business', tags=['Business'])
-
 
 # AREAS
 @router.get('/areas/list')
@@ -38,7 +35,7 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
     
 @router.get('/areas/list/simplified')
-async def get_areas(db: AsyncSession = Depends(get_db)):
+async def get_areas(area_id: int, db: AsyncSession = Depends(get_db)):
     try:
         query = (
             select(
@@ -50,7 +47,8 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
             .join(User, Area.id == User.area_id)
             .where(
                 Area.managed == True, 
-                Area.name != 'Dirección'
+                Area.name != 'Dirección',
+                Area.id != area_id
             )
         )
         
