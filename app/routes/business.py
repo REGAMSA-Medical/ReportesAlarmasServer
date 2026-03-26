@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Response
 from fastapi.exceptions import HTTPException
-from fastapi import File, Form, UploadFile
-from typing import Optional
+from fastapi import UploadFile, Request
 from app.database import get_db
 from sqlalchemy import select
 from sqlalchemy.future import select
@@ -13,6 +12,7 @@ from app.models.authentication import User
 from app.serializers.business import AreaReadSerializer
 from app.utils.logger import logger
 from app.enums.business import OrderStatusEnum
+import json
 
 
 router = APIRouter(prefix='/business', tags=['Business'])
@@ -228,20 +228,24 @@ async def save_file(file: UploadFile) -> str:
     
 # TASKS
 @router.post('/tasks')
-async def create_task( description: str = Form(...), reference_url: Optional[str] = Form(None), from_area_id: int = Form(...), to_area_id: int = Form(...), due_date: datetime = Form(...), file: Optional[UploadFile] = File(None), db: AsyncSession = Depends(get_db)):
+async def create_task( request: Request, db: AsyncSession = Depends(get_db)):
     try:
+        # Get request form data 
+        request_data = await request.form()
+        
         # Handle file upload if provided
-        file_url = None
-        if file:
+        file_data = request_data.get('file')
+        
+        if file_data:
             # Save file to media
-            file_url = await save_file(file) 
+            await save_file(file_data) 
         
         new_task = Task(
-            description=description,
-            reference_url=reference_url,
-            from_area_id=from_area_id,
-            to_area_id=to_area_id,
-            due_date=due_date,
+            description=request_data.get('description'),
+            reference_url=request_data.get('reference_url'),
+            from_area_id=int(request_data.get('from_area_id')),
+            to_area_id=int(request_data.get('to_area_id')),
+            due_date=datetime.strptime(request_data.get('due_date'), '%Y-%m-%d %H:%M:%S'),
             is_completed=False,
             completed_at=None,
             is_acepted=False,
@@ -253,7 +257,7 @@ async def create_task( description: str = Form(...), reference_url: Optional[str
         await db.refresh(new_task)
         logger.info(f"Task created successfully [{new_task.id}]")
         
-        return Response(content={'item': new_task}, status_code=201)
+        return {'item':new_task}
         
     except HTTPException as he:
         raise he
