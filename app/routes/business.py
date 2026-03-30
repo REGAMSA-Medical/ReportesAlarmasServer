@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends
 from fastapi.exceptions import HTTPException
 from fastapi import UploadFile, Request
 from app.database import get_db
@@ -171,6 +171,7 @@ async def save_file(file: UploadFile) -> str:
     import os
     import shutil
     from pathlib import Path
+    from fastapi import HTTPException
     
     # Define media directory path (project root level)
     media_dir = Path("media")
