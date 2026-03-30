@@ -35,7 +35,7 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
     
 @router.get('/areas/list/simplified')
-async def get_areas(area_id: int, db: AsyncSession = Depends(get_db)):
+async def get_areas_simplified(area_id: int, db: AsyncSession = Depends(get_db)):
     try:
         query = (
             select(
@@ -171,7 +171,6 @@ async def save_file(file: UploadFile) -> str:
     import os
     import shutil
     from pathlib import Path
-    from fastapi import HTTPException
     
     # Define media directory path (project root level)
     media_dir = Path("media")
