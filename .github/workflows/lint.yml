@@ -26,4 +26,4 @@ jobs:
 
       - name: Run Ruff
         run: |
-          ruff check . --exclude alembic --fix
+          ruff check . --exclude alembic
