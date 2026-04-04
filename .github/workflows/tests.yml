@@ -10,6 +10,9 @@ jobs:
   test:
     name: Run Pytest Suite
     runs-on: ubuntu-latest
+
+    env:
+      OPERATOR_DB_URL: ${{ secrets.TEST_DATABASE_URL }}
     
     steps:
       # Checks out repository code
