@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Run Pytest Suite
+    name: Execute Unit Testing
     runs-on: ubuntu-latest
 
     env:
@@ -36,12 +36,7 @@ jobs:
         run: | 
           poetry add pytest
 
-      # Install pytest cov with poetry
-      - name: Install pytest cov
-        run: |
-          poetry add --group dev pytest-cov
-
       # Run Unit Tests
       - name: Run tests with pytest
         run: |
-          poetry run pytest -v --cov=./app --cov-report=xml tests/
+          poetry run pytest
