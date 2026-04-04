@@ -31,4 +31,4 @@ jobs:
       # Run Unit Tests
       - name: Run tests with pytest
         run: |
-          pytest -v --cov=./app --cov-report=xml tests/
+          poetry run pytest -v --cov=./app --cov-report=xml tests/
