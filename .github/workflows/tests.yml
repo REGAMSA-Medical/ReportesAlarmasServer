@@ -1,0 +1,44 @@
+name: Run Unit Tests
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Pytest Suite
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Checks out repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Sets up the Python environment. Adjust the version as needed.
+      - name: Set up Python 3.12.3
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.3'
+
+      # Install project's dependencies
+      - name: Install dependencies with poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry && poetry install
+
+      # Install pytest with poetry
+      - name: Install pytest
+        run: | 
+          poetry add pytest
+
+      # Install pytest cov with poetry
+      - name: Install pytest cov
+        run: |
+          poetry add --group dev pytest-cov
+
+      # Run Unit Tests
+      - name: Run tests with pytest
+        run: |
+          poetry run pytest -v --cov=./app --cov-report=xml tests/
