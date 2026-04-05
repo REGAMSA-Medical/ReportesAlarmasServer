@@ -12,13 +12,22 @@ async def list_items(db:AsyncSession, model:Type[DeclarativeMeta]) -> List:
     result = await db.execute(select(model))
     return result.scalars().all()
 
-async def list_items_by_category(db:AsyncSession, model:Type[DeclarativeMeta], category_key:str, category_value:str) -> List:
-    if not hasattr(model, category_key):
-        raise ValueError(f'Invalid category key: {category_key}')
+async def R_list_items_where_column_equals_value(db:AsyncSession, model:Type[DeclarativeMeta], column:str, value:str|bool|int|float) -> List:
+    if not hasattr(model, column):
+        raise ValueError(f'Invalid column name: {column}')
     
-    column_attr = getattr(model, category_key)
+    column_attr = getattr(model, column)
 
-    result = await db.execute(select(model).where(column_attr==category_value))
+    result = await db.execute(select(model).where(column_attr==value))
+    return result.scalars().all()
+
+async def R_list_items_where_column_differs_value(db:AsyncSession, model:Type[DeclarativeMeta], column:str, value:str|bool|int|float) -> List:
+    if not hasattr(model, column):
+        raise ValueError(f'Invalid column name: {column}')
+    
+    column_attr = getattr(model, column)
+
+    result = await db.execute(select(model).where(column_attr!=value))
     return result.scalars().all()
 
 async def create_item(db:AsyncSession, model:Type[DeclarativeMeta], item_values) -> Type[DeclarativeMeta]:
