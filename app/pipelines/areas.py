@@ -2,26 +2,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.business import Area 
 from app.utils.logger import logger
-from app.enums.business import AreaCategoryEnum
+from app.enums.business import AREAS_LIST
 
 """
 Pipelines for insertion at db level
 of initial & base, business necesary data
 """
-
-AREAS_LIST = [
-    ['Dirección', AreaCategoryEnum.ADMINISTRATION],
-    ['Alarmas', AreaCategoryEnum.ENGINEERING], 
-    ['Brazos', AreaCategoryEnum.ENGINEERING], 
-    ['Torno', AreaCategoryEnum.PRODUCTION], 
-    ['RRHH', AreaCategoryEnum.ADMINISTRATION], 
-    ['Ventas', AreaCategoryEnum.ADMINISTRATION], 
-    ['Consolas', AreaCategoryEnum.ENGINEERING], 
-    ['Compresores', AreaCategoryEnum.ENGINEERING], 
-    ['Laser', AreaCategoryEnum.PRODUCTION],
-    ['Almacen', AreaCategoryEnum.LOGISTICS], 
-    ['Entregas', AreaCategoryEnum.LOGISTICS],
-]
 
 async def insertAreasPipeline(db: AsyncSession):
     """

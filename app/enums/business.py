@@ -26,3 +26,17 @@ class AreaCategoryEnum(enum.Enum):
     ENGINEERING = 'Engineering'
     PRODUCTION = 'Production'
     LOGISTICS = 'Logistics'
+    
+AREAS_LIST = [
+    ['Dirección', AreaCategoryEnum.ADMINISTRATION],
+    ['RRHH', AreaCategoryEnum.ADMINISTRATION], 
+    ['Ventas', AreaCategoryEnum.ADMINISTRATION], 
+    ['Alarmas', AreaCategoryEnum.ENGINEERING], 
+    ['Brazos', AreaCategoryEnum.ENGINEERING], 
+    ['Consolas', AreaCategoryEnum.ENGINEERING], 
+    ['Compresores', AreaCategoryEnum.ENGINEERING], 
+    ['Torno', AreaCategoryEnum.PRODUCTION], 
+    ['Laser', AreaCategoryEnum.PRODUCTION],
+    ['Almacen', AreaCategoryEnum.LOGISTICS], 
+    ['Entregas', AreaCategoryEnum.LOGISTICS],
+]
