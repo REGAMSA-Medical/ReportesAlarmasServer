@@ -12,7 +12,7 @@ import importlib
 load_dotenv()
 
 # URL de la BD (Usa el usuario admin y el motor psycopg2 para temas de migraciones y esquemas)
-ADMIN_DB_URL = os.getenv('ADMIN_DB_URL')
+MVP_ADMIN_DB_URL = os.getenv('MVP_ADMIN_DB_URL')
 
 # Alembic Config 
 config = context.config
@@ -22,7 +22,7 @@ for _, module, _ in pkgutil.iter_modules(models.__path__):
     importlib.import_module(f'app.models.{module}')
 
 # Stablish DB URL for migrations
-config.set_main_option("sqlalchemy.url", ADMIN_DB_URL)
+config.set_main_option("sqlalchemy.url", MVP_ADMIN_DB_URL)
 
 # Models metadata
 target_metadata = Base.metadata

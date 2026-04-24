@@ -6,12 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
-from app.models.business import Area, Order, OrderHistoryTrack, Stage, AreaStageProductConfig, Task, OrderStageEvidence
+from app.models.business import Area, Order, OrderHistoryTrack, Task, OrderStageEvidence
 from app.models.products import Product
 from app.models.authentication import User
 from app.serializers.business import AreaReadSerializer
 from app.utils.logger import logger
-from app.enums.business import OrderStatusEnum
+from app.enums.business import OrderStatusEnum, OrderStageEnum
 import shutil
 from pathlib import Path
 from app.decorators.common import handle_http_exceptions

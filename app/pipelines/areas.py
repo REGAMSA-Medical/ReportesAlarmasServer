@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.business import Area 
 from app.utils.logger import logger
-from app.enums.business import AREAS_LIST
+from app.enums.business import AreaEnum
 
 """
 Pipelines for insertion at db level
@@ -21,7 +21,7 @@ async def insertAreasPipeline(db: AsyncSession):
         areas_to_insert = []
         
         # Filter areas that do not exist yet
-        for name, category in AREAS_LIST:
+        for name, category in AreaEnum:
             if name not in existing_areas:
                 areas_to_insert.append(Area(name=name, category=category, managed=False))
                 

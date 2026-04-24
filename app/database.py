@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # DB: URL de la base de datos asincrona para operaciones CRUD
-OPERATOR_DB_URL = os.getenv('OPERATOR_DB_URL') 
+MVP_OPERATOR_DB_URL = os.getenv('MVP_OPERATOR_DB_URL') 
 
 # DB: Motor de base de datos asincrono para operaciones CRUD
-async_engine = create_async_engine(OPERATOR_DB_URL)
+async_engine = create_async_engine(MVP_OPERATOR_DB_URL)
 async_session = async_sessionmaker(bind=async_engine, autocommit=False)
 
 class Base(DeclarativeBase):

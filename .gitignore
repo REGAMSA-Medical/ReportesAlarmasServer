@@ -2,3 +2,9 @@
 venv
 .env
 media
+media/
+media/audios
+media/documents
+media/images
+media/videos
+commands
