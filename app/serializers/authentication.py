@@ -1,15 +1,16 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
+from uuid import UUID
 
 # READ
 class UserReadSerializer(BaseModel):
-    id:int
+    id:UUID
     firstname:str
     first_lastname:str
     second_lastname:str
     email:EmailStr
     role:str
-    area_id:int
+    area_id:UUID
     area_name:str
     created_at:datetime
     updated_at:datetime
@@ -25,7 +26,7 @@ class UserCreateSerializer(BaseModel):
     email:EmailStr
     password:str
     role:str
-    area_id:int
+    area_id:UUID
     area_name:str
     
     class Config:

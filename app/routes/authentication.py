@@ -13,26 +13,27 @@ from app.utils.logger import logger
 router = APIRouter(prefix='/auth', tags=['Authentication'])
 
 @router.post('/signUp')
-async def signUp(user_data: UserCreateSerializer, db: AsyncSession = Depends(get_db)):
+async def signUp(data: UserCreateSerializer, db: AsyncSession = Depends(get_db)):
+    
     try:
-        logger.info(f"Iniciando registro para email: {user_data.email}")
+        logger.info(f"Iniciando registro para email: {data.email}")
         
         # Verify existing email
-        result = await db.execute(select(User).filter(User.email == user_data.email))
+        result = await db.execute(select(User).filter(User.email == data.email))
         if result.scalars().first():
-            logger.warning(f"Intento de registro con email duplicado: {user_data.email}")
+            logger.warning(f"Intento de registro con email duplicado: {data.email}")
             raise HTTPException(status_code=400, detail='El email ya está registrado')
 
         # Verify area exists
-        area_res = await db.execute(select(Area).filter(Area.id == user_data.area_id))
+        area_res = await db.execute(select(Area).filter(Area.id == data.area_id))
         area = area_res.scalar_one_or_none()
         
         if not area:
-            logger.error(f"Área con ID {user_data.area_id} no encontrada")
+            logger.error(f"Área con ID {data.area_id} no encontrada")
             raise HTTPException(status_code=404, detail="El área seleccionada no existe")
 
         # Verify already managed area
-        if user_data.role == "Jefe de Área":
+        if data.role == "AREA_MANAGER":
             if area.managed:
                 logger.warning(f"Intento de asignar segundo Jefe al área: {area.name}")
                 raise HTTPException(
@@ -44,36 +45,36 @@ async def signUp(user_data: UserCreateSerializer, db: AsyncSession = Depends(get
 
         # Avoid same person in the same rol and department/area
         same_area_query = select(User).filter(
-            func.upper(func.trim(User.firstname)) == func.upper(func.trim(user_data.firstname)),
-            func.upper(func.trim(User.first_lastname)) == func.upper(func.trim(user_data.first_lastname)),
-            func.upper(func.trim(User.role)) == func.upper(func.trim(user_data.role)),
-            User.area_id == user_data.area_id
+            func.upper(func.trim(User.firstname)) == func.upper(func.trim(data.firstname)),
+            func.upper(func.trim(User.first_lastname)) == func.upper(func.trim(data.first_lastname)),
+            User.role == data.role,
+            User.area_id == data.area_id
         )
         
-        if user_data.second_lastname and user_data.second_lastname.strip():
+        if data.second_lastname and data.second_lastname.strip():
             same_area_query = same_area_query.filter(
-                func.upper(func.trim(User.second_lastname)) == func.upper(func.trim(user_data.second_lastname))
+                func.upper(func.trim(User.second_lastname)) == func.upper(func.trim(data.second_lastname))
             )
 
         res_duplicate = await db.execute(same_area_query)
         if res_duplicate.scalars().first():
-            logger.warning(f"Ya existe un {user_data.role} con ese nombre en esta área.")
+            logger.warning(f"Ya existe un {data.role} con ese nombre en esta área.")
             raise HTTPException(
                 status_code=400,
-                detail=f"Ya existe un {user_data.role} con ese nombre en esta área."
+                detail=f"Ya existe un {data.role} con ese nombre en esta área."
             )
         
         # Create user
-        hashed_pwd = hash_password(user_data.password)
+        hashed_pwd = hash_password(data.password)
     
         new_user = User(
-            firstname=user_data.firstname, 
-            first_lastname=user_data.first_lastname, 
-            second_lastname=user_data.second_lastname, 
-            email=user_data.email, 
+            firstname=data.firstname, 
+            first_lastname=data.first_lastname, 
+            second_lastname=data.second_lastname, 
+            email=data.email, 
             password=hashed_pwd,
-            role=user_data.role, 
-            area_id=user_data.area_id
+            role=data.role, 
+            area_id=data.area_id
         )
         
         db.add(new_user)
@@ -152,10 +153,15 @@ async def signIn(credentials: UserLoginSerializer, db: AsyncSession = Depends(ge
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Error inesperado: {str(e)}')
 
+from pydantic import BaseModel
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
 @router.post('/refreshJWT')
-async def refreshJWT(refresh_token: str):
+async def refreshJWT(request: RefreshTokenRequest):
     try:
-        payload = jwt.decode(refresh_token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(request.refresh_token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
         
         # Validate that token is of refresh type
         if payload.get('type') != 'refresh':

@@ -21,9 +21,9 @@ async def insertAreasPipeline(db: AsyncSession):
         areas_to_insert = []
         
         # Filter areas that do not exist yet
-        for name, category in AreaEnum:
-            if name not in existing_areas:
-                areas_to_insert.append(Area(name=name, category=category, managed=False))
+        for area in AreaEnum:
+            if area.value not in existing_areas:
+                areas_to_insert.append(Area(name=area.value, managed=False))
                 
         if not areas_to_insert:
             logger.info('There are no new areas to insert')

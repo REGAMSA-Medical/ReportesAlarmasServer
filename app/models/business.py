@@ -31,7 +31,8 @@ class Order(BaselineModel):
     # Joins
     customer = relationship("Customer", lazy="selectin")
     area = relationship("Area",  lazy="selectin")
-    items = relationship("OrderItem", back_populates="order", lazy="selectin") # I have to check what lazy=selectin mean, and what back_populates mean
+    items = relationship("OrderItem", back_populates="order", lazy="selectin")
+    history_tracks = relationship("OrderHistoryTrack", back_populates="order", lazy="selectin")
 
 class OrderItem(BaselineModel):
     """
@@ -76,7 +77,7 @@ class OrderHistoryTrack(BaselineModel):
     stage = Column(Enum(OrderStageEnum), default=OrderStageEnum.ORDER, nullable=False, index=True) 
     status = Column(String, nullable=False) 
     # Joins
-    order = relationship("Order", back_populates='order_track', lazy='selectin')
+    order = relationship("Order", back_populates='history_tracks', lazy='selectin')
     product = relationship("Product", lazy='selectin')
     area = relationship("Area", lazy='selectin')
     
