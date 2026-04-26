@@ -80,46 +80,33 @@ async def get_areas_simplified(area_id: int, db: AsyncSession = Depends(get_db))
     
 # ORDERS
 @router.get('/recentActivityByUserArea')
-async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
+async def get_recent_activity_by_user_area(id: str, db: AsyncSession = Depends(get_db)):
     """
     Get recent activity by user area (new assigned tasks, moment when a task is started, a task is completed, cancelled tasks, etc)
     Only area managers can access to this info directly.
     This retrieves the order track id, product model, order status, order stage and datetime when this event was registered.
     """
     try:
-        config_query = select(AreaStageProductConfig).where(AreaStageProductConfig.area_id == id)
-        config_result = await db.execute(config_query)
-        allowed_configs = config_result.scalars().all()
-
-        if not allowed_configs:
-            return HTTPException(status_code=404)
-
-        allowed_stages = [c.stage_id for c in allowed_configs]
-        allowed_products = [c.product_id for c in allowed_configs if c.product_id is not None]
-        from datetime import datetime
-
         query = (
             select(
                 OrderHistoryTrack.id,
                 Product.model,
                 OrderHistoryTrack.status,
-                Stage.name.label("stage_name"),
+                OrderHistoryTrack.stage,
                 OrderHistoryTrack.created_at.label("date")
             )
             .join(Product, OrderHistoryTrack.product_id == Product.id)
-            .join(Stage, OrderHistoryTrack.stage_id == Stage.id)
             .where(OrderHistoryTrack.area_id == id)
-            .where(OrderHistoryTrack.stage_id.in_(allowed_stages))
-            .where(OrderHistoryTrack.created_at >= datetime.now(timezone.utc) - timedelta(weeks=2))
+            .where(OrderHistoryTrack.created_at >= datetime.now(timezone.utc) - timedelta(weeks=1))
+            .order_by(OrderHistoryTrack.created_at.desc())
         )
-
-        if allowed_products:
-            query = query.where(OrderHistoryTrack.product_id.in_(allowed_products))
-
-        query = query.order_by(OrderHistoryTrack.created_at.desc())
         
         result = await db.execute(query)
-        
+        rows = result.scalars().all()
+
+        if not rows:
+            return HTTPException(status_code=404, detail='There are no recent activity for this area')
+
         history_data = [
             {
                 "id": row.id,
@@ -128,14 +115,14 @@ async def get_recent_activity_by_user_area(id: int, db: AsyncSession = Depends(g
                 "stage": row.stage_name,
                 "date": row.date
             } 
-            for row in result.all()
+            for row in rows
         ]
         
         return {"items": history_data}
 
     except Exception as e:
-        logger.error(f"Unexpected Error in Recent Activity: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")  
+        logger.error(f'Unexpected Error: {e}')
+        raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')  
     
 @router.get('/ordersOverallInfoByUserArea')
 async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depends(get_db)):

@@ -75,7 +75,7 @@ class OrderHistoryTrack(BaselineModel):
     product_id = Column(UUID(as_uuid=True), ForeignKey('products.id', ondelete='CASCADE'), nullable=False, index=True)
     area_id = Column(UUID(as_uuid=True), ForeignKey('areas.id', ondelete='CASCADE'), nullable=False, index=True)
     stage = Column(Enum(OrderStageEnum), default=OrderStageEnum.ORDER, nullable=False, index=True) 
-    status = Column(String, nullable=False) 
+    status = Column(Enum(OrderStatusEnum), default=OrderStatusEnum.NOT_STARTED, nullable=False) 
     # Joins
     order = relationship("Order", back_populates='history_tracks', lazy='selectin')
     product = relationship("Product", lazy='selectin')

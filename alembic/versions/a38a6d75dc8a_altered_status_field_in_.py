@@ -1,8 +1,8 @@
-"""Create tables
+"""Altered status field in OrderHistoryTrack
 
-Revision ID: f421c66fd372
-Revises: ab1fbd97960a
-Create Date: 2026-04-24 11:53:52.597394
+Revision ID: a38a6d75dc8a
+Revises: 
+Create Date: 2026-04-25 17:36:27.349239
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'f421c66fd372'
-down_revision: Union[str, None] = 'ab1fbd97960a'
+revision: str = 'a38a6d75dc8a'
+down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -128,7 +128,7 @@ def upgrade() -> None:
     sa.Column('product_id', sa.UUID(), nullable=False),
     sa.Column('area_id', sa.UUID(), nullable=False),
     sa.Column('stage', sa.Enum('ORDER', 'PRODUCTION', 'BOARDING', name='orderstageenum'), nullable=False),
-    sa.Column('status', sa.String(), nullable=False),
+    sa.Column('status', sa.Enum('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELED', name='orderstatusenum'), nullable=False),
     sa.Column('id', sa.UUID(), server_default=sa.text('uuid_generate_v7()'), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
