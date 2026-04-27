@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from app.models.business import Area, Order, OrderHistoryTrack, Task, OrderStageEvidence
 from app.models.products import Product
 from app.models.authentication import User
-from app.serializers.business import AreaReadSerializer
+from app.dtos.business import AreaNameDTO
 from app.utils.logger import logger
 from app.enums.business import OrderStatusEnum
 import shutil
@@ -20,24 +20,34 @@ from app.utils.responses import NotFoundItemsResponse
 router = APIRouter(prefix='/business', tags=['Business'])
 
 # AREAS
-@router.get('/areas/list')
-async def get_areas(db: AsyncSession = Depends(get_db)):
-    try:
-        query = select(Area).where(Area.managed==False, Area.name!='Dirección')
-        result = await db.execute(query)
-        areas_from_db = result.scalars().all()
+@router.get('/areasNames')
+@handle_http_exceptions
+async def get_areas_names(include_managed_areas: bool = True, include_direction_area: bool = True, db: AsyncSession = Depends(get_db)):
+    """
+    Get the list of areas' names, areas that are not managed by an area manager.
+    Id field is included as index for frontend implementations.
+    Dirección area is excluded.
+    """
+    query = (
+        select(Area.id, Area.name)
+    )
     
-        if not areas_from_db:
-            raise HTTPException(status_code=404, detail='No se encontraron áreas disponibles')
+    if include_managed_areas == False:
+        query = query.where(Area.managed==False) 
+    
+    if include_direction_area == False:
+        query = query.where(Area.name!='Dirección')
+        
+    result = await db.execute(query)
+    areas = result.mappings().all()
 
-        areas = [AreaReadSerializer.from_orm(area) for area in areas_from_db]
-        
-        return {'items': areas}
-        
-    except Exception as e:
-        logger.error(f"Areas List Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
+    if not areas:
+        return NotFoundItemsResponse()
+
+    areas = [AreaNameDTO.from_orm(area) for area in areas]
     
+    return {'items': areas}
+   
 @router.get('/areas/list/simplified')
 async def get_areas_simplified(area_id: str, include_user_area: bool, db: AsyncSession = Depends(get_db)):
     """
@@ -130,8 +140,8 @@ async def get_recent_activity_by_user_area(id: str, db: AsyncSession = Depends(g
         logger.error(f'Unexpected Error: {e}')
         raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')  
     
-@handle_http_exceptions
 @router.get('/ordersOverallInfoByUserArea')
+@handle_http_exceptions
 async def get_orders_overall_info_by_user_area(id: str, db: AsyncSession = Depends(get_db)):
     """
     Get all orders asigned to an area categorized by their status (new/not started, in progress, completed).
@@ -163,8 +173,8 @@ async def get_orders_overall_info_by_user_area(id: str, db: AsyncSession = Depen
         "items": items
     }
 
-@handle_http_exceptions
 @router.get('/orders/list/byArea')
+@handle_http_exceptions
 async def get_orders_list_by_user_area(id: int, db: AsyncSession =  Depends(get_db)):
     """
     Get list of all orders corresponding to an area, fetching them by user area id.
