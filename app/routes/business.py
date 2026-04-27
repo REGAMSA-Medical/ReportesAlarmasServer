@@ -19,6 +19,29 @@ from app.utils.responses import NotFoundItemsResponse
 
 router = APIRouter(prefix='/business', tags=['Business'])
 
+@router.get('/areas')
+@handle_http_exceptions
+async def get_areas(managed : None | bool  = None, db : AsyncSession = Depends(get_db)):
+    """
+    Get list of areas with all their fields.
+    Can bt filtered by 'managed' == True or 'managed' == False, or None by default to return all. 
+    """
+    
+    query = select(Area)
+    
+    if managed in [True, False]:
+        query = query.where(Area.managed == managed)
+    
+    result = await db.execute(query)
+    areas = result.scalars().all()
+    
+    if not areas:
+        return NotFoundItemsResponse()
+    
+    return {
+        'items':areas
+    }
+
 # AREAS
 @router.get('/areasNames')
 @handle_http_exceptions
