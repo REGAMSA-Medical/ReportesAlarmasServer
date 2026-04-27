@@ -14,7 +14,7 @@ from app.utils.logger import logger
 from app.enums.business import OrderStatusEnum
 import shutil
 from pathlib import Path
-from app.decorators.common import handle_http_exceptions
+from app.decorators.common import handle_http_exceptions, handle_exceptions
 from app.utils.responses import NotFoundItemsResponse
 
 router = APIRouter(prefix='/business', tags=['Business'])
@@ -71,97 +71,88 @@ async def get_areas_names(include_managed_areas: bool = True, include_direction_
     
     return {'items': areas}
    
-@router.get('/areas/list/simplified')
+@router.get('/areasSimplified')
+@handle_http_exceptions
 async def get_areas_simplified(area_id: str, include_user_area: bool, db: AsyncSession = Depends(get_db)):
     """
     Obtain a list of areas in a simplified format with not all fields.
     The user area is only included in the list when 'include_user_area' is True.
     The response is a list of objects(areas), each with area_id, area_name, area_manager_name.
     """
-    
-    try:
-        query = (
-            select(
-                Area.id.label("area_id"), 
-                Area.name.label("area_name"), 
-                User.firstname.label("area_manager_firstname"),
-                User.first_lastname.label("area_manager_lastname")
-            )
-            .join(User, Area.id == User.area_id)
-            .where(
-                Area.managed == True, 
-                Area.name != 'Dirección',
-                (Area.id != area_id if (include_user_area == True) else None)
-            )
+    query = (
+        select(
+            Area.id.label("area_id"), 
+            Area.name.label("area_name"), 
+            User.firstname.label("area_manager_firstname"),
+            User.first_lastname.label("area_manager_lastname")
         )
+        .join(User, Area.id == User.area_id)
+        .where(
+            Area.managed == True, 
+            Area.name != 'Dirección',
+            (Area.id != area_id if (include_user_area == True) else None)
+        )
+    )
 
-        result = await db.execute(query)
-        
-        areas_from_db = result.mappings().all()
+    result = await db.execute(query)
     
-        if not areas_from_db:
-            return HTTPException(status_code=404, detail='No se encontraron áreas disponibles')
+    areas_from_db = result.mappings().all()
 
-        areas = [
-            {
-                "area_id": row["area_id"],
-                "area_name": row["area_name"],
-                "area_manager_name": f'{row["area_manager_firstname"]} {row["area_manager_lastname"]}'
-            } 
-            for row in areas_from_db
-        ]
-        
-        return {'items': areas}
-    except Exception as e:
-        logger.error(f"Areas List Error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+    if not areas_from_db:
+        return NotFoundItemsResponse()
+
+    areas = [
+        {
+            "area_id": row["area_id"],
+            "area_name": row["area_name"],
+            "area_manager_name": f'{row["area_manager_firstname"]} {row["area_manager_lastname"]}'
+        } 
+        for row in areas_from_db
+    ]
     
+    return {'items': areas}
     
 # ORDERS
 @router.get('/recentActivityByUserArea')
+@handle_http_exceptions
 async def get_recent_activity_by_user_area(id: str, db: AsyncSession = Depends(get_db)):
     """
     Get recent activity by user area (new assigned tasks, moment when a task is started, a task is completed, cancelled tasks, etc)
     Only area managers can access to this info directly.
     This retrieves the order track id, product model, order status, order stage and datetime when this event was registered.
     """
-    try:
-        query = (
-            select(
-                OrderHistoryTrack.id,
-                Product.model,
-                OrderHistoryTrack.status,
-                OrderHistoryTrack.stage,
-                OrderHistoryTrack.created_at.label("date")
-            )
-            .join(Product, OrderHistoryTrack.product_id == Product.id)
-            .where(OrderHistoryTrack.area_id == id)
-            .where(OrderHistoryTrack.created_at >= datetime.now(timezone.utc) - timedelta(weeks=1))
-            .order_by(OrderHistoryTrack.created_at.desc())
+    query = (
+        select(
+            OrderHistoryTrack.id,
+            Product.model,
+            OrderHistoryTrack.status,
+            OrderHistoryTrack.stage,
+            OrderHistoryTrack.created_at.label("date")
         )
-        
-        result = await db.execute(query)
-        rows = result.scalars().all()
+        .join(Product, OrderHistoryTrack.product_id == Product.id)
+        .where(OrderHistoryTrack.area_id == id)
+        .where(OrderHistoryTrack.created_at >= datetime.now(timezone.utc) - timedelta(weeks=1))
+        .order_by(OrderHistoryTrack.created_at.desc())
+    )
+    
+    result = await db.execute(query)
+    rows = result.scalars().all()
 
-        if not rows:
-            return HTTPException(status_code=404, detail='There are no recent activity for this area')
+    if not rows:
+        return NotFoundItemsResponse()
 
-        history_data = [
-            {
-                "id": row.id,
-                "model": row.model,
-                "status": row.status,
-                "stage": row.stage_name,
-                "date": row.date
-            } 
-            for row in rows
-        ]
-        
-        return {"items": history_data}
-
-    except Exception as e:
-        logger.error(f'Unexpected Error: {e}')
-        raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')  
+    history_data = [
+        {
+            "id": row.id,
+            "model": row.model,
+            "status": row.status,
+            "stage": row.stage_name,
+            "date": row.date
+        } 
+        for row in rows
+    ]
+    
+    return {"items": history_data}
     
 @router.get('/ordersOverallInfoByUserArea')
 @handle_http_exceptions
@@ -196,7 +187,7 @@ async def get_orders_overall_info_by_user_area(id: str, db: AsyncSession = Depen
         "items": items
     }
 
-@router.get('/orders/list/byArea')
+@router.get('/ordersListByArea')
 @handle_http_exceptions
 async def get_orders_list_by_user_area(id: int, db: AsyncSession =  Depends(get_db)):
     """
@@ -212,7 +203,7 @@ async def get_orders_list_by_user_area(id: int, db: AsyncSession =  Depends(get_
     
     return result.scalars().all()
 
-
+@handle_exceptions
 async def save_file(file: UploadFile) -> str:
     """
     Save uploaded file to the media directory organized by file type.
@@ -259,59 +250,53 @@ async def save_file(file: UploadFile) -> str:
     # Define full file path
     file_path = subdir_path / unique_filename
     
-    try:
-        # Save the file
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+    # Save the file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Return relative path from project root
+    return str(file_path)
         
-        # Return relative path from project root
-        return str(file_path)
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
     
     
 # TASKS
-@router.post('/tasks')
-async def create_task( request: Request, db: AsyncSession = Depends(get_db)):
-    try:
-        # Get request form data 
-        request_data = await request.form()
-        
-        # Handle file upload if provided
-        file_data = request_data.get('file')
-        
-        if file_data:
-            # Save file to media
-            await save_file(file_data) 
-        
-        new_task = Task(
-            description=request_data.get('description'),
-            reference_url=request_data.get('reference_url'),
-            from_area_id=int(request_data.get('from_area_id')),
-            to_area_id=int(request_data.get('to_area_id')),
-            due_date=datetime.strptime(request_data.get('due_date'), '%Y-%m-%d %H:%M:%S'),
-            is_completed=False,
-            completed_at=None,
-            is_acepted=False,
-            evidence_url=None
-        )
-        
-        db.add(new_task)
-        await db.commit()
-        await db.refresh(new_task)
-        logger.info(f"Task created successfully [{new_task.id}]")
-        
-        return {'item':new_task}
-        
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        logger.error(f'Server Error: {str(e)}', exc_info=True)
-        raise HTTPException(status_code=500, detail=f'Server Error: {str(e)}')
+@router.post('/assignTask')
+@handle_http_exceptions
+async def assign_task( request: Request, db: AsyncSession = Depends(get_db)):
+
+    # Request form data 
+    request_data = await request.form()
     
+    # Handle file upload if provided
+    file_data = request_data.get('file')
+    
+    if file_data:
+        # Save file to media
+        await save_file(file_data) 
+    
+    new_task = Task(
+        description=request_data.get('description'),
+        reference_url=request_data.get('reference_url'),
+        from_area_id=int(request_data.get('from_area_id')),
+        to_area_id=int(request_data.get('to_area_id')),
+        due_date=datetime.strptime(request_data.get('due_date'), '%Y-%m-%d %H:%M:%S'),
+        is_completed=False,
+        completed_at=None,
+        is_acepted=False,
+        evidence_url=None
+    )
+    
+    db.add(new_task)
+    await db.commit()
+    await db.refresh(new_task)
+    logger.info(f"Task created successfully [{new_task.id}]")
+    
+    return {'item':new_task}
+
+
 # EVIDENCES
-@router.post('/evidences')
+@router.post('/uploadEvidence')
+@handle_http_exceptions
 async def upload_evidence(request: Request, db: AsyncSession = Depends(get_db)):
     """
     - Area manager upload an evidence, in photo or document when their task is already finished.
@@ -320,91 +305,83 @@ async def upload_evidence(request: Request, db: AsyncSession = Depends(get_db)):
     - Notify the next area in the next stage that the order is moved to their area to continue the workflow, as a not_started order.
     - Order's data for report is retrieved in case the area manager wants to generate a report.
     """
+    # Request form data 
+    request_data = await request.form()
     
-    try:
-         # Get request form data 
-        request_data = await request.form()
-        
-        product_id = request_data.get('product_id')
-        area_id = request_data.get('request_user_area_id')
-        order_id = request_data.get('order_id')
-        stage_id = request_data.get('stage_id')
-        evidence_url = request_data.get('evidence_url')
-        description = f'La orden {request_data.get("order_id")} completó la etapa de {request_data.get("stage_id")}'
-        
-        # Handle file upload if provided
-        file_data = request_data.get('file')
-        
-        if file_data:
-            # Save file to media (Switch to S3 in a near future)
-            await save_file(file_data) 
-        
-        # Save evidence in DB
-        new_evidence = OrderStageEvidence(
-            order_id=order_id,
-            stage_id=stage_id,
-            evidence_url=evidence_url,
-            description=description
-        )
-        
-        db.add(new_evidence)
-        await db.commit()
-        await db.refresh(new_evidence)
-        logger.info(f"Evidence uploaded successfully [{new_evidence.id}]")
-        
-        # Save completed process in OrderHistoryTrack
-        completed_order_history_track = OrderHistoryTrack(
-            order_id=order_id,
-            stage_id=stage_id,
-            product_id=product_id,
-            area_id=area_id,
-            status=OrderStatusEnum.COMPLETED,
-            notes=f'Proceso finalizado en el area de {area_id} para la orden {order_id}'
-        )
-        
-        db.add(completed_order_history_track)
-        await db.commit()
-        await db.refresh(completed_order_history_track)
-        
-        # Move order to the next stage
-        stage_name = f'SELECT name FROM stages WHERE id={request_data.get('stage_id')}'
-        
-        stages_list = ['Order', 'Administration', 'Engineering', 'Production', 'Testing', 'Packaging', 'Delivery', 'Receivement']
-        
-        if stage_name in stages_list:
-            next_index = stages_list.index(stage_name)+1
-            stage_name = stages_list[next_index]
-            
-        next_stage_id = f'SELECT id FROM stages WHERE name={stage_name}'
-        
-        next_area_id = f'SELECT area_id FROM area_stage_product_config WHERE stage_id={next_stage_id} AND product_id={product_id}'
-        
-        # Save new process for the next area in the workflow in OrderHistoryTrack
-        assigned_order_history_track = OrderHistoryTrack(
-            order_id=order_id,
-            stage_id=next_stage_id,
-            product_id=product_id,
-            area_id=next_area_id,
-            status=OrderStatusEnum.NOT_STARTED,
-            notes=f'La orden {order_id} ha sido asignada al area de {next_area_id}'
-        )
-        
-        db.add(assigned_order_history_track)
-        await db.commit()
-        await db.refresh(assigned_order_history_track)
-        
-        # Save order in a new stage in db
-        new_order_stage = f'UPDATE orders SET stage_id={stage_id}, status={OrderStatusEnum.NOT_STARTED} WHERE id={request_data.get('order_id')}'
-        
-        # Notify next area manager enroled in the next stage
-        pass
-        
-        # Return success response
-        return {'item':new_evidence}
-        
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        logger.error(f'Server Error: {str(e)}', ext_info=True)
-        raise HTTPException(status_code=500, detail=f'Server Error: {str(e)}')
+    product_id = request_data.get('product_id')
+    area_id = request_data.get('request_user_area_id')
+    order_id = request_data.get('order_id')
+    stage_id = request_data.get('stage_id')
+    evidence_url = request_data.get('evidence_url')
+    description = f'La orden {request_data.get("order_id")} completó la etapa de {request_data.get("stage_id")}'
     
+    # Handle file upload if provided
+    file_data = request_data.get('file')
+    
+    if file_data:
+        # Save file to media (Switch to S3 in a near future)
+        await save_file(file_data) 
+    
+    # Save evidence in DB
+    new_evidence = OrderStageEvidence(
+        order_id=order_id,
+        stage_id=stage_id,
+        evidence_url=evidence_url,
+        description=description
+    )
+    
+    db.add(new_evidence)
+    await db.commit()
+    await db.refresh(new_evidence)
+    logger.info(f"Evidence uploaded successfully [{new_evidence.id}]")
+    
+    # Save completed process in OrderHistoryTrack
+    completed_order_history_track = OrderHistoryTrack(
+        order_id=order_id,
+        stage_id=stage_id,
+        product_id=product_id,
+        area_id=area_id,
+        status=OrderStatusEnum.COMPLETED,
+        notes=f'Proceso finalizado en el area de {area_id} para la orden {order_id}'
+    )
+    
+    db.add(completed_order_history_track)
+    await db.commit()
+    await db.refresh(completed_order_history_track)
+    
+    # Move order to the next stage
+    stage_name = f'SELECT name FROM stages WHERE id={request_data.get('stage_id')}'
+    
+    stages_list = ['Order', 'Administration', 'Engineering', 'Production', 'Testing', 'Packaging', 'Delivery', 'Receivement']
+    
+    if stage_name in stages_list:
+        next_index = stages_list.index(stage_name)+1
+        stage_name = stages_list[next_index]
+        
+    next_stage_id = f'SELECT id FROM stages WHERE name={stage_name}'
+    
+    next_area_id = f'SELECT area_id FROM area_stage_product_config WHERE stage_id={next_stage_id} AND product_id={product_id}'
+    
+    # Save new process for the next area in the workflow in OrderHistoryTrack
+    assigned_order_history_track = OrderHistoryTrack(
+        order_id=order_id,
+        stage_id=next_stage_id,
+        product_id=product_id,
+        area_id=next_area_id,
+        status=OrderStatusEnum.NOT_STARTED,
+        notes=f'La orden {order_id} ha sido asignada al area de {next_area_id}'
+    )
+    
+    db.add(assigned_order_history_track)
+    await db.commit()
+    await db.refresh(assigned_order_history_track)
+    
+    # Save order in a new stage in db
+    new_order_stage = f'UPDATE orders SET stage_id={stage_id}, status={OrderStatusEnum.NOT_STARTED} WHERE id={request_data.get('order_id')}'
+    
+    # Notify next area manager enroled in the next stage
+    pass
+    
+    # Return success response
+    return {'item':new_evidence}
+        
