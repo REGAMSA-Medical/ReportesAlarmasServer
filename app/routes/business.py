@@ -38,7 +38,13 @@ async def get_areas(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')
     
 @router.get('/areas/list/simplified')
-async def get_areas_simplified(area_id: int, db: AsyncSession = Depends(get_db)):
+async def get_areas_simplified(area_id: str, include_user_area: bool, db: AsyncSession = Depends(get_db)):
+    """
+    Obtain a list of areas in a simplified format with not all fields.
+    The user area is only included in the list when 'include_user_area' is True.
+    The response is a list of objects(areas), each with area_id, area_name, area_manager_name.
+    """
+    
     try:
         query = (
             select(
@@ -51,18 +57,17 @@ async def get_areas_simplified(area_id: int, db: AsyncSession = Depends(get_db))
             .where(
                 Area.managed == True, 
                 Area.name != 'Dirección',
-                Area.id != area_id
+                (Area.id != area_id if (include_user_area == True) else None)
             )
         )
-        
+
         result = await db.execute(query)
         
         areas_from_db = result.mappings().all()
     
         if not areas_from_db:
-            raise HTTPException(status_code=404, detail='No se encontraron áreas disponibles')
+            return HTTPException(status_code=404, detail='No se encontraron áreas disponibles')
 
-       # Format manually (Serializers do not work here because the query did not returned complete objects)
         areas = [
             {
                 "area_id": row["area_id"],
