@@ -11,10 +11,11 @@ from app.models.products import Product
 from app.models.authentication import User
 from app.serializers.business import AreaReadSerializer
 from app.utils.logger import logger
-from app.enums.business import OrderStatusEnum, OrderStageEnum
+from app.enums.business import OrderStatusEnum
 import shutil
 from pathlib import Path
 from app.decorators.common import handle_http_exceptions
+from app.utils.responses import NotFoundItemsResponse
 
 router = APIRouter(prefix='/business', tags=['Business'])
 
@@ -129,32 +130,38 @@ async def get_recent_activity_by_user_area(id: str, db: AsyncSession = Depends(g
         logger.error(f'Unexpected Error: {e}')
         raise HTTPException(status_code=500, detail=f'Unexpected Error: {e}')  
     
+@handle_http_exceptions
 @router.get('/ordersOverallInfoByUserArea')
-async def get_orders_overall_info_by_user_area(id: int, db: AsyncSession = Depends(get_db)):
+async def get_orders_overall_info_by_user_area(id: str, db: AsyncSession = Depends(get_db)):
     """
     Get all orders asigned to an area categorized by their status (new/not started, in progress, completed).
     Every one of this categorized orders include all fields from its Order model.
     """
-    try:
-        async def get_orders_by_status(status: OrderStatusEnum):
-            query = (
-                select(Order)
-                .join(Stage, Order.stage_id == Stage.id)
-                .where(Order.status == status, Order.current_area_id == id)
-            )
-            result = await db.execute(query)
-            return result.scalars().all()
+    async def get_orders_by_status(status: OrderStatusEnum):
+        query = (
+            select(Order)
+            .where(Order.status == status, Order.area_id == id)
+        )
+        result = await db.execute(query)
+        return result.scalars().all()
 
-        return {
-            "items": {
-                'new': await get_orders_by_status(OrderStatusEnum.NOT_STARTED),
-                'process': await get_orders_by_status(OrderStatusEnum.IN_PROGRESS),
-                'completed': await get_orders_by_status(OrderStatusEnum.COMPLETED),
-            }
-        }
-    except Exception as e:
-        logger.error(f'Unexpected Error: {str(e)}')
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+    items = {
+        'new': await get_orders_by_status(OrderStatusEnum.NOT_STARTED),
+        'process': await get_orders_by_status(OrderStatusEnum.IN_PROGRESS),
+        'completed': await get_orders_by_status(OrderStatusEnum.COMPLETED),
+    }
+
+    empty_keys = 0
+    for key, value in items.items():
+        if len(value) == 0:
+            empty_keys+=1
+        
+    if empty_keys > 0:    
+        return NotFoundItemsResponse()
+
+    return {
+        "items": items
+    }
 
 @handle_http_exceptions
 @router.get('/orders/list/byArea')
