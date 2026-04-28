@@ -187,21 +187,25 @@ async def get_orders_overall_info_by_user_area(id: str, db: AsyncSession = Depen
         "items": items
     }
 
-@router.get('/ordersListByArea')
+@router.get('/ordersByArea')
 @handle_http_exceptions
-async def get_orders_list_by_user_area(id: int, db: AsyncSession =  Depends(get_db)):
+async def get_orders_by_area(area_id: str | None = None, db: AsyncSession =  Depends(get_db)):
     """
-    Get list of all orders corresponding to an area, fetching them by user area id.
+    Get list of all orders corresponding to an area, fetching them by user area id or obtaining all of them.
     """
     
-    query = (
-        select(Order.id, Order.product, Order.customer)
-        .where(Order.current_area_id == id)
-    )
+    query = (select(Order.id, Order.product, Order.customer).where(Order.current_area_id == id)) if (area_id) else (select(Order.id, Order.product, Order.customer))
         
     result = await db.execute(query)
+    orders = result.scalars().all()
     
-    return result.scalars().all()
+    if not orders:
+        return NotFoundItemsResponse()
+        
+    return {
+        'items':orders
+    }
+        
 
 @handle_exceptions
 async def save_file(file: UploadFile) -> str:
