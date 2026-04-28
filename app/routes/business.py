@@ -1,21 +1,19 @@
 from fastapi import APIRouter, Depends
-from fastapi.exceptions import HTTPException
-from fastapi import UploadFile, Request
-from app.database import get_db
+from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
+from app.database import get_db
 from app.models.business import Area, Order, OrderHistoryTrack, Task, OrderStageEvidence
 from app.models.products import Product
 from app.models.authentication import User
-from app.dtos.business import AreaNameDTO
 from app.utils.logger import logger
-from app.enums.business import OrderStatusEnum
-import shutil
-from pathlib import Path
-from app.decorators.common import handle_http_exceptions, handle_exceptions
 from app.utils.responses import NotFoundItemsResponse
+from app.utils.files import upload_media_file
+from app.enums.business import OrderStatusEnum
+from app.dtos.business import AreaNameDTO
+from app.decorators.common import handle_http_exceptions
 
 router = APIRouter(prefix='/business', tags=['Business'])
 
@@ -220,7 +218,7 @@ async def assign_task( request: Request, db: AsyncSession = Depends(get_db)):
     
     if file_data:
         # Save file to media
-        await save_file(file_data) 
+        await upload_media_file(file_data) 
     
     new_task = Task(
         description=request_data.get('description'),
@@ -268,7 +266,7 @@ async def upload_evidence(request: Request, db: AsyncSession = Depends(get_db)):
     
     if file_data:
         # Save file to media (Switch to S3 in a near future)
-        await save_file(file_data) 
+        await upload_media_file(file_data) 
     
     # Save evidence in DB
     new_evidence = OrderStageEvidence(
