@@ -205,11 +205,12 @@ async def get_orders_by_area(area_id: str | None = None, db: AsyncSession =  Dep
     }
 
 
-# EVIDENCES
-@router.post('/uploadEvidence')
+# STAGES
+@router.post('/completeStage')
 @handle_http_exceptions
-async def upload_evidence(request: Request, db: AsyncSession = Depends(get_db)):
+async def complete_stage(request: Request, db: AsyncSession = Depends(get_db)):
     """
+    - The process is completed in one stage (the stage that an area or many areas participate in) to be moved to the next stage(and area/s) in the workflow.
     - Area manager upload an evidence, in photo or document when their task is already finished.
     - Evidence is saved for report generation.
     - Once the evidence is uploaded the order/product is moved to the next step in the workflow.
