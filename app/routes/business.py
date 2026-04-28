@@ -203,41 +203,6 @@ async def get_orders_by_area(area_id: str | None = None, db: AsyncSession =  Dep
     return {
         'items':orders
     }
-    
-    
-# TASKS
-@router.post('/assignTask')
-@handle_http_exceptions
-async def assign_task( request: Request, db: AsyncSession = Depends(get_db)):
-
-    # Request form data 
-    request_data = await request.form()
-    
-    # Handle file upload if provided
-    file_data = request_data.get('file')
-    
-    if file_data:
-        # Save file to media
-        await upload_media_file(file_data) 
-    
-    new_task = Task(
-        description=request_data.get('description'),
-        reference_url=request_data.get('reference_url'),
-        from_area_id=int(request_data.get('from_area_id')),
-        to_area_id=int(request_data.get('to_area_id')),
-        due_date=datetime.strptime(request_data.get('due_date'), '%Y-%m-%d %H:%M:%S'),
-        is_completed=False,
-        completed_at=None,
-        is_acepted=False,
-        evidence_url=None
-    )
-    
-    db.add(new_task)
-    await db.commit()
-    await db.refresh(new_task)
-    logger.info(f"Task created successfully [{new_task.id}]")
-    
-    return {'item':new_task}
 
 
 # EVIDENCES
