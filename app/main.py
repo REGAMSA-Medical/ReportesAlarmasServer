@@ -12,6 +12,7 @@ from . pipelines.areas import insertAreasPipeline
 from app.routes.authentication import router as authRouter
 from app.routes.business import router as businessRouter
 from app.routes.tasks import router as tasksRoter
+from app.routes.orders import router as ordersRouter
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -54,3 +55,4 @@ async def root() -> JSONResponse:
 app.include_router(authRouter)
 app.include_router(businessRouter)
 app.include_router(tasksRoter)
+app.include_router(ordersRouter)
