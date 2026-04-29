@@ -1,6 +1,7 @@
 from fastapi.responses import JSONResponse, Response
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
+from app.utils.logger import logger
 
 # Success
 def ListItemsResponse(items) -> JSONResponse:
@@ -23,6 +24,7 @@ def NotFoundItemsResponse() -> JSONResponse:
     return JSONResponse(content={'error':'No items found'}, status_code=status.HTTP_404_NOT_FOUND)
 
 def InternalServerErrorResponse(error:Exception) -> JSONResponse:
+    logger.error(f'Error: {error}')
     return JSONResponse(content={'error':str(error)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 def NotCreatedItemErrorResponse() -> JSONResponse:

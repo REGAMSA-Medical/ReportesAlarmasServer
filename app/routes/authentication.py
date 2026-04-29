@@ -18,6 +18,13 @@ router = APIRouter(prefix='/auth', tags=['Authentication'])
 async def signUp(data: UserCreateSerializer, db: AsyncSession = Depends(get_db)):
     logger.info(f"Iniciando registro para email: {data.email}")
     
+    ROLE_MAPPING = {
+        'Dirección General': 'DIRECTIVE',
+        'Jefe de Área': 'AREA_MANAGER'
+    }
+
+    data.role = ROLE_MAPPING.get(data.role, data.role)
+    
     # Verify existing email
     result = await db.execute(select(User).filter(User.email == data.email))
     if result.scalars().first():
