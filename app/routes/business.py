@@ -71,10 +71,10 @@ async def get_areas_names(include_managed_areas: bool = True, include_direction_
    
 @router.get('/areasSimplified')
 @handle_http_exceptions
-async def get_areas_simplified(area_id: str, include_user_area: bool, db: AsyncSession = Depends(get_db)):
+async def get_areas_simplified(area_id: str, managed: bool|None = None, include_given_area: bool|None = None, db: AsyncSession = Depends(get_db)):
     """
     Obtain a list of areas in a simplified format with not all fields.
-    The user area is only included in the list when 'include_user_area' is True.
+    The user area is only included in the list when 'include_given_area' is True.
     The response is a list of objects(areas), each with area_id, area_name, area_manager_name.
     """
     query = (
@@ -85,12 +85,14 @@ async def get_areas_simplified(area_id: str, include_user_area: bool, db: AsyncS
             User.first_lastname.label("area_manager_lastname")
         )
         .join(User, Area.id == User.area_id)
-        .where(
-            Area.managed == True, 
-            Area.name != 'Dirección',
-            (Area.id != area_id if (include_user_area == True) else None)
-        )
+        .where(Area.name != 'Dirección')
     )
+    
+    if include_given_area == False:
+        query = query.where(Area.id != area_id )
+    
+    if managed in [True, False]:
+        query = query.where(Area.managed == managed)
 
     result = await db.execute(query)
     
@@ -111,11 +113,11 @@ async def get_areas_simplified(area_id: str, include_user_area: bool, db: AsyncS
     return {'items': areas}
     
 # ORDERS
-@router.get('/recentActivityByUserArea')
+@router.get('/recentActivityByArea')
 @handle_http_exceptions
-async def get_recent_activity_by_user_area(id: str, db: AsyncSession = Depends(get_db)):
+async def get_recent_activity_by_area(id: str, db: AsyncSession = Depends(get_db)):
     """
-    Get recent activity by user area (new assigned tasks, moment when a task is started, a task is completed, cancelled tasks, etc)
+    Get recent activity by ser area (new assigned tasks, moment when a task is started, a task is completed, cancelled tasks, etc)
     Only area managers can access to this info directly.
     This retrieves the order track id, product model, order status, order stage and datetime when this event was registered.
     """
@@ -152,9 +154,9 @@ async def get_recent_activity_by_user_area(id: str, db: AsyncSession = Depends(g
     
     return {"items": history_data}
     
-@router.get('/ordersOverallInfoByUserArea')
+@router.get('/ordersOverallInfoByArea')
 @handle_http_exceptions
-async def get_orders_overall_info_by_user_area(id: str, db: AsyncSession = Depends(get_db)):
+async def get_orders_overall_info_by_area(id: str, db: AsyncSession = Depends(get_db)):
     """
     Get all orders asigned to an area categorized by their status (new/not started, in progress, completed).
     Every one of this categorized orders include all fields from its Order model.
@@ -192,7 +194,10 @@ async def get_orders_by_area(area_id: str | None = None, db: AsyncSession =  Dep
     Get list of all orders corresponding to an area, fetching them by user area id or obtaining all of them.
     """
     
-    query = (select(Order.id, Order.product, Order.customer).where(Order.current_area_id == id)) if (area_id) else (select(Order.id, Order.product, Order.customer))
+    query = (select(Order.id, Order.product, Order.customer))
+        
+    if area_id:
+        query = query.where(Order.area_id == area_id)
         
     result = await db.execute(query)
     orders = result.scalars().all()
