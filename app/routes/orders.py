@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
-from app.models.business import Order, Area
+from app.models.business import Order, OrderItem, Area
 from app.decorators.common import handle_http_exceptions
 from app.enums.business import OrderStageEnum, OrderStatusEnum, AreaEnum
 from app.utils.logger import logger
 from sqlalchemy import select
 from app.utils.responses import NotCreatedItemErrorResponse
+import json
 
 router = APIRouter(prefix='/orders', tags=['Orders'])
 
@@ -22,8 +23,9 @@ async def create_order(request:Request, db:AsyncSession = Depends(get_db)):
     the description is optional, and free.
     """
     # Request form data 
-    data = await request.form()
-    logger.info('Obtained form data')
+    body = await request.body()    
+    data = json.loads(body)
+    logger.info('Obtained body data')
     
     # Obtain SELLS area id
     area_id = db.execute(select(Area.id).where(Area.name == AreaEnum.SELLS.name))
@@ -32,18 +34,33 @@ async def create_order(request:Request, db:AsyncSession = Depends(get_db)):
     try: 
         # Create order
         new_order = Order(
-            customer_id=data.get('customer_id'),
+            customer_id=data['customer_id'],
             stage = OrderStageEnum.ORDER,
             status = OrderStatusEnum.IN_PROGRESS,
             area_id = area_id,
-            description=data.get('description')|'Hay una nueva orden',
+            description=data['description'],
         )
         
         db.add(new_order)
         await db.commit()
         await db.refresh(new_order)
-        logger.info(f"Created new order [{new_order}]")
+        logger.info(f"Created new order {new_order}")
     except Exception as e:
         return NotCreatedItemErrorResponse(error=e)
+    
+    # Transactional: Rollback and commit are automatic
+    async with db.begin():
+
+        order_items = data["items"]
+
+        for item in order_items:
+            new_item = OrderItem(
+                order_id=item.order_id,
+                product_id=item.product_id,
+                quantity=item.quantity,
+            )
+            db.add(new_item)
+            
+    logger.info(f"Added items to the new order {new_order.id}")
     
     return {'item':new_order}
