@@ -31,6 +31,12 @@ async def create_order(request:Request, db:AsyncSession = Depends(get_db)):
     area_id = db.execute(select(Area.id).where(Area.name == AreaEnum.SELLS.name))
     logger.info('Obtained SELLS area id')
     
+    # Calculate total order price
+    total_price = 0
+    
+    for item in data['order_items']:
+        total_price+=(item.quantity*item.price)
+    
     try: 
         # Create order
         new_order = Order(
@@ -39,6 +45,7 @@ async def create_order(request:Request, db:AsyncSession = Depends(get_db)):
             status = OrderStatusEnum.IN_PROGRESS,
             area_id = area_id,
             description=data['description'],
+            total_price=total_price
         )
         
         db.add(new_order)
@@ -55,10 +62,11 @@ async def create_order(request:Request, db:AsyncSession = Depends(get_db)):
 
         for item in order_items:
             new_item = OrderItem(
-                order_id=item.order_id,
+                order_id=new_order.id,
                 product_id=item.product_id,
                 quantity=item.quantity,
             )
+                        
             db.add(new_item)
             
     logger.info(f"Added items to the new order {new_order.id}")

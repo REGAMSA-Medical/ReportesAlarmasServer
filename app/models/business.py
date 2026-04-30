@@ -1,14 +1,14 @@
 from app.models.base import BaselineModel
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Enum, DateTime
+from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, Enum, DateTime, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.enums.business import OrderStatusEnum, OrderStageEnum
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class Customer(BaselineModel):
     __tablename__ = 'customers'
     
-    organization = Column(String , index=True)
+    organization = Column(String)
     name = Column(String, nullable=False)
     email = Column(String)
     phone = Column(String, nullable=False)
@@ -27,6 +27,8 @@ class Order(BaselineModel):
     status = Column(Enum(OrderStatusEnum), nullable=False, default=OrderStatusEnum.NOT_STARTED, index=True) # Completed, Not Started, In Progress, Canceled
     area_id = Column(UUID(as_uuid=True), ForeignKey('areas.id', ondelete='CASCADE'), nullable=False, index=True) # Current order area_id
     description = Column(String)
+    due_date = Column(DateTime, default=lambda: datetime.today() + timedelta(weeks=1), nullable=False) 
+    total_price = Column(Numeric(10, 2), default=0.0, nullable=False)
     
     # Joins
     customer = relationship("Customer", lazy="selectin")
