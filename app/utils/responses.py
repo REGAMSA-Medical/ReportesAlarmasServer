@@ -27,8 +27,9 @@ def InternalServerErrorResponse(error:Exception) -> JSONResponse:
     logger.error(f'Error: {error}')
     return JSONResponse(content={'error':str(error)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-def NotCreatedItemErrorResponse() -> JSONResponse:
-    return JSONResponse(content={'error':'It was not possible to create a new item'}, status_code=status.HTTP_400_BAD_REQUEST)
+def NotCreatedItemErrorResponse(error:Exception) -> JSONResponse:
+    logger.error(f'Bad Request Error: {error}')
+    return JSONResponse(content={'error':f'Not created: {error}'}, status_code=status.HTTP_400_BAD_REQUEST)
 
 def DeleteItemErrorResponse(item) -> JSONResponse:
     return JSONResponse(content={'error':f'It was not possible to delete this item: {jsonable_encoder(item)}'}, status_code=status.HTTP_409_CONFLICT)

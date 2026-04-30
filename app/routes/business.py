@@ -5,7 +5,7 @@ from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
 from app.database import get_db
-from app.models.business import Area, Order, OrderHistoryTrack, Task, OrderStageEvidence
+from app.models.business import Area, Order, OrderHistoryTrack, OrderStageEvidence
 from app.models.products import Product
 from app.models.authentication import User
 from app.utils.logger import logger

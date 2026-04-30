@@ -10,7 +10,6 @@ from app.decorators.common import handle_http_exceptions
 
 router = APIRouter(prefix='/tasks', tags=['Tasks'])
 
-# TASKS
 @router.post('/assignTask')
 @handle_http_exceptions
 async def assign_task( request: Request, db: AsyncSession = Depends(get_db)):
